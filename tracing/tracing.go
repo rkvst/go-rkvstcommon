@@ -4,12 +4,14 @@ package tracing
 import (
 	"io"
 	"log"
+	"net/http"
 	"net/textproto"
 	"os"
 	"strings"
 
 	grpc_otrace "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
-	"github.com/opentracing/opentracing-go"
+	otnethttp "github.com/opentracing-contrib/go-stdlib/nethttp"
+	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/rkvst/go-rkvstcommon/environment"
 	"github.com/rkvst/go-rkvstcommon/logger"
@@ -41,6 +43,16 @@ var otHeaders = []string{
 	parentSpanID,
 	sampled,
 	flags,
+}
+
+func HTTPMiddleware(h http.Handler) http.Handler {
+	return otnethttp.Middleware(
+		opentracing.GlobalTracer(),
+		h,
+		otnethttp.OperationNameFunc(func(r *http.Request) string {
+			return "HTTP " + r.Method + ":" + r.URL.EscapedPath() + " >"
+		}),
+	)
 }
 
 // GRPCDialTracingOptions returns DialOption enabling open tracing for grpc connections
