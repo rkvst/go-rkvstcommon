@@ -1,0 +1,24 @@
+---
+
+version: '3'
+
+tasks:
+
+  generate:
+    desc: Generate all mocks
+    deps:
+      - task: azbus
+
+  generate-single-mock:
+    summary: generate a specific mock
+    cmds:
+      - rm -f {{.PATH}}/mocks/*
+      - mockery --all --exported --disable-version-string --with-expecter --dir {{.PATH}} --output {{.PATH}}/mocks
+
+  azbus:
+    summary: Generate the common package azbus mocks
+    sources:
+      - ./azbus/**/*.go
+    cmds:
+      - task: generate-single-mock
+        vars: {PATH: "azbus" } 

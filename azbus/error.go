@@ -6,9 +6,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 )
 
-// alias so we dont have to import azservicebus elsewhere
-type ServicebusCode = azservicebus.Code
-
 // Azure package expects the user to elucidate errors like so:
 //
 //	    var servicebusError *azservicebus.Error
@@ -30,13 +27,12 @@ var (
 	ErrTimeout            = errors.New("timeout")
 )
 
-// CodeUnauthorizedAccess is in the latest code but is not in the current version used.
 func NewAzbusError(err error) error {
 	var servicebusError *azservicebus.Error
 	if errors.As(err, &servicebusError) {
 		switch servicebusError.Code {
-		// case azservicebus.CodeUnauthorizedAccess:
-		// 	return ErrUnauthorizedAccess
+		case azservicebus.CodeUnauthorizedAccess:
+			return ErrUnauthorizedAccess
 		case azservicebus.CodeConnectionLost:
 			return ErrConnectionLost
 		case azservicebus.CodeLockLost:

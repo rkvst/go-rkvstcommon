@@ -2,6 +2,8 @@ package azbus
 
 import (
 	"context"
+	"errors"
+	"time"
 )
 
 // Set a timeout for processing the message, this should be no later than
@@ -27,18 +29,24 @@ import (
 // If it does timeout then it is too late anyway as the peeklock will already be released.
 //
 // for the time being we impose a timeout as it is safe.
-func setTimeout(ctx context.Context, log Logger, msg *ReceivedMessage) (context.Context, context.CancelFunc) {
+var (
+	ErrPeekLockTimeout = errors.New("peeklock deadline reached")
+)
+
+func setTimeout(ctx context.Context, log Logger, msg *ReceivedMessage) (context.Context, context.CancelFunc, time.Duration) {
 
 	var cancel context.CancelFunc
 
-	msgLockedUntil := msg.LockedUntil
-	if msgLockedUntil != nil {
-		ctx, cancel = context.WithDeadline(ctx, *msgLockedUntil)
-		log.Debugf("context deadline from message lock deadline: %v", ctx)
-		return ctx, cancel
+	log.Debugf("msg locked until %s", msg.LockedUntil)
+	if msg.LockedUntil != nil {
+		msgLockedUntil := *msg.LockedUntil
+		ctx, cancel = context.WithDeadlineCause(ctx, msgLockedUntil, ErrPeekLockTimeout)
+		maxDuration := msgLockedUntil.Sub(time.Now())
+		log.Debugf("msg must be processed in %s", maxDuration)
+		return ctx, cancel, maxDuration
 	}
 
-	ctx, cancel = context.WithTimeout(ctx, RenewalTime)
+	ctx, cancel = context.WithTimeoutCause(ctx, RenewalTime, ErrPeekLockTimeout)
 	log.Infof("could not get lock deadline from message, using fixed timeout %v", ctx)
-	return ctx, cancel
+	return ctx, cancel, RenewalTime
 }

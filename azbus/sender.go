@@ -11,6 +11,15 @@ import (
 	otlog "github.com/opentracing/opentracing-go/log"
 )
 
+// so we dont have to import the azure repo everywhere
+type OutMessage = azservicebus.Message
+
+func NewOutMessage(data []byte) OutMessage {
+	return azservicebus.Message{
+		Body: data,
+	}
+}
+
 // SenderConfig configuration for an azure servicebus namespace and queue
 type SenderConfig struct {
 	ConnectionString string
@@ -36,9 +45,9 @@ func NewSender(log Logger, cfg SenderConfig) *Sender {
 
 	s := &Sender{
 		Cfg:      cfg,
-		log:      log,
 		azClient: NewAZClient(cfg.ConnectionString),
 	}
+	s.log = log.WithIndex("sender", s.String())
 	return s
 }
 
@@ -116,7 +125,7 @@ func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMes
 
 	// Without this fix eventsourcepoller and similar services repeatedly context cancel and repeatedly
 	// restart.
-	ctx = contextWithoutCancel(ctx)
+	ctx = context.WithoutCancel(ctx)
 
 	var err error
 
@@ -144,7 +153,6 @@ func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMes
 	if message.ApplicationProperties == nil {
 		message.ApplicationProperties = make(map[string]any)
 	}
-	opts = AddCorrelationIDOption(ctx, opts...)
 	for _, opt := range opts {
 		opt(&message)
 	}

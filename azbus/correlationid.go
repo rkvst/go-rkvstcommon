@@ -16,11 +16,3 @@ func ContextFromReceivedMessage(ctx context.Context, message *ReceivedMessage) c
 	}
 	return correlationid.ContextWithCorrelationID(ctx, cid.(string))
 }
-
-func AddCorrelationIDOption(ctx context.Context, opts ...OutMessageOption) []OutMessageOption {
-	correlationID := correlationid.FromContext(ctx)
-	if correlationID == "" {
-		return opts
-	}
-	return append(opts, WithProperty(correlationid.CorrelationIDKey, correlationID))
-}
