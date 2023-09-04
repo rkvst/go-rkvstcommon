@@ -20,7 +20,7 @@ jobs:
         with:
           commits: ${{ steps.get-pr-commits.outputs.commits }}
           pattern: '^.{0,128}(\n.*)*$'
-          error: 'Subject too long (max 75)'
+          error: 'Subject too long - recommended 50 (max 128)'
 
       - name: Check Body Line Length
         if: ${{ success() || failure() }}
