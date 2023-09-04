@@ -153,7 +153,7 @@ func (r *Receiver) elapsed(ctx context.Context, count int, total int, maxDuratio
 		log.Infof("WARNING: both can be found in the helm chart for each service.")
 	}
 	if err != nil {
-		log.Infof("WARNING: processing msg %d duration %v returned error: %v", count, duration, err)
+		log.Infof("WARNING: processing msg %d duration %s returned error: %v", count, duration, err)
 	}
 	return err
 
@@ -202,8 +202,7 @@ func (r *Receiver) ReceiveMessages(handler Handler) error {
 		return azerr
 	}
 	r.log.Debugf(
-		"Receive %s: NumberOfReceivedMessages %d, RenewMessageLock: %v",
-		r.String(),
+		"NumberOfReceivedMessages %d, RenewMessageLock: %v",
 		r.Cfg.NumberOfReceivedMessages,
 		r.Cfg.RenewMessageLock,
 	)
@@ -225,7 +224,7 @@ func (r *Receiver) ReceiveMessages(handler Handler) error {
 			var ecancel context.CancelFunc
 			if r.Cfg.RenewMessageLock {
 				// start up RenewMessageLock goroutines before processing any
-				// messages. Inherit values from input context.
+				// messages.
 				ectx, ecancel = context.WithCancel(fctx)
 				defer ecancel()
 				for i := 0; i < total; i++ {
@@ -269,7 +268,7 @@ func (r *Receiver) Open() error {
 	if r.receiver != nil {
 		return nil
 	}
-	r.log.Debugf("Open Receiver %s", r)
+	r.log.Debugf("Open")
 	client, err := r.azClient.azClient()
 	if err != nil {
 		return err
@@ -317,10 +316,10 @@ func (r *Receiver) Abandon(ctx context.Context, err error, msg *ReceivedMessage)
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Message.Abandon")
 	defer span.Finish()
-	log.Infof("%s, Abandon Message on DeliveryCount %d: %v", r, msg.DeliveryCount, err)
+	log.Infof("Abandon Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
 	err1 := r.receiver.AbandonMessage(ctx, msg, nil)
 	if err1 != nil {
-		azerr := fmt.Errorf("%s: Abandon Message failure: %w", r, NewAzbusError(err1))
+		azerr := fmt.Errorf("Abandon Message failure: %w", NewAzbusError(err1))
 		log.Infof("%s", azerr)
 	}
 	return nil
@@ -338,7 +337,7 @@ func (r *Receiver) Reschedule(ctx context.Context, err error, msg *ReceivedMessa
 
 	span, _ := opentracing.StartSpanFromContext(ctx, "Message.Reschedule")
 	defer span.Finish()
-	log.Infof("%s, Reschedule Message on DeliveryCount %d: %v", r, msg.DeliveryCount, err)
+	log.Infof("Reschedule Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
 	return nil
 }
 
@@ -350,13 +349,13 @@ func (r *Receiver) DeadLetter(ctx context.Context, err error, msg *ReceivedMessa
 
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Message.DeadLetter")
 	defer span.Finish()
-	log.Infof("%s: DeadLetter Message: %v", r, err)
+	log.Infof("DeadLetter Message: %v", err)
 	options := azservicebus.DeadLetterOptions{
 		Reason: to.Ptr(err.Error()),
 	}
 	err1 := r.receiver.DeadLetterMessage(ctx, msg, &options)
 	if err1 != nil {
-		azerr := fmt.Errorf("%s: DeadLetter Message failure: %w", r, NewAzbusError(err1))
+		azerr := fmt.Errorf("DeadLetter Message failure: %w", NewAzbusError(err1))
 		log.Infof("%s", azerr)
 	}
 	return nil
@@ -370,13 +369,13 @@ func (r *Receiver) Complete(ctx context.Context, msg *ReceivedMessage) error {
 	span, _ := opentracing.StartSpanFromContext(ctx, "Message.Complete")
 	defer span.Finish()
 
-	log.Infof("%s: Complete Message", r)
+	log.Infof("Complete Message")
 
 	err := r.receiver.CompleteMessage(ctx, msg, nil)
 	if err != nil {
 		// If the completion fails then the message will get rescheduled, but it's effect will
 		// have been made, so we could get duplication issues.
-		azerr := fmt.Errorf("%s: Complete: failed to settle message: %w", r, NewAzbusError(err))
+		azerr := fmt.Errorf("Complete: failed to settle message: %w", NewAzbusError(err))
 		log.Infof("%s", azerr)
 	}
 	return nil

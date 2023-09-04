@@ -9,6 +9,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	otrace "github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
+
+	"github.com/rkvst/go-rkvstcommon/correlationid"
 )
 
 // so we dont have to import the azure repo everywhere
@@ -63,7 +65,7 @@ func (s *Sender) Close(ctx context.Context) {
 
 	var err error
 	if s != nil && s.sender != nil {
-		s.log.Debugf("Close %s", s)
+		s.log.Debugf("Close")
 		s.mtx.Lock()
 		defer s.mtx.Unlock()
 		err = s.sender.Close(ctx)
@@ -94,7 +96,7 @@ func (s *Sender) Open() error {
 		s.log.Infof("%s", azerr)
 		return azerr
 	}
-	s.log.Debugf("%s: Maximum message size is %d bytes", s, s.maxMessageSizeInBytes)
+	s.log.Debugf("Maximum message size is %d bytes", s.maxMessageSizeInBytes)
 
 	sender, err := client.NewSender(s.Cfg.TopicOrQueueName, nil)
 	if err != nil {
@@ -103,7 +105,7 @@ func (s *Sender) Open() error {
 		return azerr
 	}
 
-	s.log.Debugf("Open Sender %s", s)
+	s.log.Debugf("Open")
 	s.sender = sender
 	return nil
 }
@@ -146,7 +148,7 @@ func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMes
 	size := int64(len(message.Body))
 	log.Debugf("%s: Msg Sized %d limit %d", s, size, s.maxMessageSizeInBytes)
 	if size > s.maxMessageSizeInBytes {
-		log.Debugf("%s: Msg Sized %d > limit %d :%v", s, size, s.maxMessageSizeInBytes, ErrMessageOversized)
+		log.Debugf("Msg Sized %d > limit %d :%v", size, s.maxMessageSizeInBytes, ErrMessageOversized)
 		return fmt.Errorf("%s: Msg Sized %d > limit %d :%w", s, size, s.maxMessageSizeInBytes, ErrMessageOversized)
 	}
 	now := time.Now()
@@ -156,13 +158,17 @@ func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMes
 	for _, opt := range opts {
 		opt(&message)
 	}
+	correlationID := correlationid.FromContext(ctx)
+	if correlationID != "" {
+		message.ApplicationProperties[correlationid.CorrelationIDKey] = correlationID
+	}
 	log.Debugf("ApplicationProperties %v", message.ApplicationProperties)
 	err = s.sender.SendMessage(ctx, &message, nil)
 	if err != nil {
-		azerr := fmt.Errorf("%s: Send failed in %s: %w", s, time.Since(now), NewAzbusError(err))
+		azerr := fmt.Errorf("Send failed in %s: %w", time.Since(now), NewAzbusError(err))
 		log.Infof("%s", azerr)
 		return azerr
 	}
-	log.Debugf("%s: Sending message took %s", s, time.Since(now))
+	log.Debugf("Sending message took %s", time.Since(now))
 	return nil
 }
