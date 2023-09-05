@@ -2,6 +2,7 @@ package azbus
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -153,7 +154,11 @@ func (r *Receiver) elapsed(ctx context.Context, count int, total int, maxDuratio
 		log.Infof("WARNING: both can be found in the helm chart for each service.")
 	}
 	if err != nil {
-		log.Infof("WARNING: processing msg %d duration %s returned error: %v", count, duration, err)
+		if errors.Is(err, ErrPeekLockTimeout) {
+			log.Infof("WARNING: processing msg %d duration %s returned error: %v", count, duration, err)
+			log.Infof("WARNING: please either enable SERVICEBUS_RENEW_LOCK or reduce SERVICEBUS_INCOMING_MESSAGES")
+			log.Infof("WARNING: both can be found in the helm chart for each service.")
+		}
 	}
 	return err
 
