@@ -14,6 +14,10 @@ const (
 	commaSeparator = ","
 )
 
+var (
+	ErrNotFound = errors.New("Environment variable not found")
+)
+
 // GetLogLevel returns the loglevet or panics. This is called before any logger
 // is available. i.e. don't use a logger here.
 func GetLogLevel() string {
