@@ -2,6 +2,7 @@
 package tracing
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -75,6 +76,11 @@ func HeaderMatcher(key string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func NewTracer(serviceName string) io.Closer {
+        listenStr := fmt.Sprintf(":%s", environment.GetOrFatal("PORT"))
+        return NewFromEnv(serviceName, listenStr, "ZIPKIN_ENDPOINT", "DISABLE_ZIPKIN");
 }
 
 // NewFromEnv initialises tracing and returns a closer if tracing is

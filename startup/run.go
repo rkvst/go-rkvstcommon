@@ -16,12 +16,13 @@ func Run(serviceName string, run Runner) {
 	var exitCode int
 	logger.New(environment.GetLogLevel())
 	log := logger.Sugar.WithServiceName(serviceName)
-	err := run(serviceName, log)
 
+	err := run(serviceName, log)
 	if err != nil {
 		log.Infof("Error terminating: %v", err)
 		exitCode = 1
 	}
+
 	log.Infof("Shutting down gracefully")
 	logger.OnExit()
 	os.Exit(exitCode)
