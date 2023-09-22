@@ -12,6 +12,10 @@ import (
 	"github.com/opentracing/opentracing-go"
 )
 
+var (
+	ErrNoHandler = errors.New("no handler defined")
+)
+
 // so we dont have to import the azure repo everywhere
 type ReceivedMessage = azservicebus.ReceivedMessage
 
@@ -96,9 +100,18 @@ type Receiver struct {
 	mtx      sync.Mutex
 	receiver *azservicebus.Receiver
 	options  *azservicebus.ReceiverOptions
+	handler Handler
 }
 
-func NewReceiver(log Logger, cfg ReceiverConfig) *Receiver {
+type ReceiverOption func(*Receiver)
+
+func WithHandler(h Handler) ReceiverOption {
+	return func(r *Receiver) {
+		r.handler = h
+	}
+}
+
+func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiver {
 	var options *azservicebus.ReceiverOptions
 	if cfg.Deadletter {
 		options = &azservicebus.ReceiverOptions{
@@ -107,13 +120,17 @@ func NewReceiver(log Logger, cfg ReceiverConfig) *Receiver {
 		}
 	}
 
-	r := &Receiver{
+	r := Receiver{
 		Cfg:      cfg,
 		azClient: NewAZClient(cfg.ConnectionString),
 		options:  options,
 	}
 	r.log = log.WithIndex("receiver", r.String())
-	return r
+	for _, opt := range opts {
+		opt(&r)
+	}
+
+	return &r
 }
 
 func (r *Receiver) GetAZClient() AZClient {
@@ -265,6 +282,19 @@ func (r *Receiver) ReceiveMessages(handler Handler) error {
 		}
 	}
 
+}
+
+// The following 2 methods satisfy the startup.Listener interface.
+func (r *Receiver) Listen() error {
+	if r.handler == nil {
+		return ErrNoHandler
+	}
+	return r.ReceiveMessages(r.handler)
+}
+
+func (r *Receiver) Shutdown(ctx context.Context) error {
+	r.Close(ctx)
+	return nil
 }
 
 func (r *Receiver) Open() error {
