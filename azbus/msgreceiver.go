@@ -9,6 +9,11 @@ type MsgReceiver interface {
 	Close(context.Context)
 	ReceiveMessages(Handler) error
 	String() string
+
+	// Listener interface
+	Listen() error
+	Shutdown(context.Context) error
+
 	GetAZClient() AZClient
 
 	Abandon(context.Context, error, *ReceivedMessage) error
