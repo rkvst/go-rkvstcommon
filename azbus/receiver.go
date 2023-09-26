@@ -7,9 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
-	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 var (
@@ -357,79 +355,4 @@ func (r *Receiver) Close(ctx context.Context) {
 			r.receiver = nil
 		}
 	}
-}
-
-// NB: ALL disposition methods return nil so they can be used in return statements
-
-// Abandon abandons message. This function is not used but is present for consistency.
-func (r *Receiver) Abandon(ctx context.Context, err error, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, ctx := tracing.StartSpanFromContext(ctx, "Message.Abandon")
-	defer span.Finish()
-	log.Infof("Abandon Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
-	err1 := r.receiver.AbandonMessage(ctx, msg, nil)
-	if err1 != nil {
-		azerr := fmt.Errorf("Abandon Message failure: %w", NewAzbusError(err1))
-		log.Infof("%s", azerr)
-	}
-	return nil
-}
-
-// Reschedule handles when a message should be deferred at a later time. There are a
-// number of ways of doing this but it turns out that simply not doing anything causes
-// azservicebus to resubmit the message 1 minute later. We keep the function signature with
-// unused arguments for consistency and in case we need to implement more sophisticated
-// algorithms in future.
-func (r *Receiver) Reschedule(ctx context.Context, err error, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, _ := tracing.StartSpanFromContext(ctx, "Message.Reschedule")
-	defer span.Finish()
-	log.Infof("Reschedule Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
-	return nil
-}
-
-// DeadLetter explicitly deadletters a message.
-func (r *Receiver) DeadLetter(ctx context.Context, err error, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, ctx := tracing.StartSpanFromContext(ctx, "Message.DeadLetter")
-	defer span.Finish()
-	log.Infof("DeadLetter Message: %v", err)
-	options := azservicebus.DeadLetterOptions{
-		Reason: to.Ptr(err.Error()),
-	}
-	err1 := r.receiver.DeadLetterMessage(ctx, msg, &options)
-	if err1 != nil {
-		azerr := fmt.Errorf("DeadLetter Message failure: %w", NewAzbusError(err1))
-		log.Infof("%s", azerr)
-	}
-	return nil
-}
-
-func (r *Receiver) Complete(ctx context.Context, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, _ := tracing.StartSpanFromContext(ctx, "Message.Complete")
-	defer span.Finish()
-
-	log.Infof("Complete Message")
-
-	err := r.receiver.CompleteMessage(ctx, msg, nil)
-	if err != nil {
-		// If the completion fails then the message will get rescheduled, but it's effect will
-		// have been made, so we could get duplication issues.
-		azerr := fmt.Errorf("Complete: failed to settle message: %w", NewAzbusError(err))
-		log.Infof("%s", azerr)
-	}
-	return nil
 }
