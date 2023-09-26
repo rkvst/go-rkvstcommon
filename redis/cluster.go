@@ -64,16 +64,13 @@ type clusterConfig struct {
 func FromEnvOrFatal() RedisConfig {
 	cfg := clusterConfig{}
 
-	cfg.Size = env.GetIntWithDefault(RedisClusterSizeEnvSuffix, -1)
+	cfg.Size = env.GetIntOrFatal(RedisClusterSizeEnvSuffix)
 	cfg.namespace = env.GetOrFatal(RedisNamespaceEnvSuffix)
 
 	if cfg.Size == -1 {
 		cfg.options.Addr = env.GetOrFatal(RedisNodeAddressSuffix)
 		cfg.options.DB = env.GetIntOrFatal(RedisDBSuffix)
-		cfg.options.Password = env.ReadFileWithDefaultOrFatal(
-			env.GetWithDefault(RedisPasswordSuffix, ""),
-			"",
-		)
+		cfg.options.Password = env.ReadIndirectOrFatal(RedisPasswordSuffix)
 		return &cfg
 	}
 

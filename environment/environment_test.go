@@ -7,20 +7,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetWithDefaultUnsetVar(t *testing.T) {
-	os.Unsetenv("ABC")
-	value := GetWithDefault("ABC", "DEF")
-
-	assert.Equal(t, "DEF", value)
-}
-
-func TestGetWithDefaultSetVar(t *testing.T) {
-	os.Setenv("ABC", "VAL")
-	value := GetWithDefault("ABC", "DEF")
-
-	assert.Equal(t, "VAL", value)
-}
-
 func TestGetRequiredSet(t *testing.T) {
 	os.Setenv("ABC", "VAL")
 	value, err := GetRequired("ABC")

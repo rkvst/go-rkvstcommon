@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -13,7 +14,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	env "github.com/rkvst/go-rkvstcommon/environment"
 	"github.com/rkvst/go-rkvstcommon/logger"
 )
 
@@ -47,13 +47,21 @@ func DefaultAuthorizer() autorest.Authorizer {
 	return autorest.NewBearerAuthorizer(tokenProvider)
 }
 
+func getWithDefault(key string) string {
+	val, ok := os.LookupEnv(key)
+	if ok {
+		return val
+	}
+	return "<notset>"
+}
+
 func EnvironmentAuthorizer() (autorest.Authorizer, error) {
 
 	logger.Sugar.Infof("Using env authorizer for keyvault")
-	logger.Sugar.Infof("AZURE_TENANT_ID: %s", env.GetWithDefault("AZURE_TENANT_ID", "<notset>"))
-	logger.Sugar.Infof("AZURE_CLIENT_ID: %s", env.GetWithDefault("AZURE_CLIENT_ID", "<notset>"))
+	logger.Sugar.Infof("AZURE_TENANT_ID: %s", getWithDefault("AZURE_TENANT_ID"))
+	logger.Sugar.Infof("AZURE_CLIENT_ID: %s", getWithDefault("AZURE_CLIENT_ID"))
 	// We do not use the env auhtorizer in production
-	logger.Sugar.Infof("AZURE_CLIENT_SECRET: %s", env.GetWithDefault("AZURE_CLIENT_SECRET", "<notset>"))
+	logger.Sugar.Infof("AZURE_CLIENT_SECRET: %s", getWithDefault("AZURE_CLIENT_SECRET"))
 
 	return auth.NewAuthorizerFromEnvironment()
 }
