@@ -1,9 +1,41 @@
 name: "Verify Linked Task"
 
 on: [pull_request]
-
+  
 # For details refer to https://github.com/tim-actions/commit-message-checker-with-regex
 jobs:
-  check-pr:
-    uses: rkvst/avid-builder/.github/workflows/verify-azure-issue.yml@master
-    
+  check_pr:
+    if: ${{ !startsWith(github.head_ref, 'dependabot') && !startsWith(github.head_ref, 'revert-') }}
+    name: Check Commit Message
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get PR Commits
+        id: 'get-pr-commits'
+        uses: tim-actions/get-pr-commits@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check Subject Line Length
+        uses: tim-actions/commit-message-checker-with-regex@v0.3.2
+        with:
+          commits: ${{ steps.get-pr-commits.outputs.commits }}
+          pattern: '^.{0,128}(\n.*)*$'
+          error: 'Subject line too long (suggested 50 chars maximum 128)'
+
+      - name: Check Body Line Length
+        if: ${{ success() || failure() }}
+        uses: tim-actions/commit-message-checker-with-regex@v0.3.2
+        with:
+          commits: ${{ steps.get-pr-commits.outputs.commits }}
+          pattern: '^.+(\n.{0,72})*$'
+          error: 'Body line too long (max 72)'
+
+      - name: Check Azure ticket reference
+        if: ${{ success() || failure() }}
+        uses: tim-actions/commit-message-checker-with-regex@v0.3.2
+        with:
+          commits: ${{ steps.get-pr-commits.outputs.commits }}
+          pattern: 'AB#\d{4,5}'
+          error: 'No Azure ticket reference found'
+          one_pass_all_pass: 'true'
+          
