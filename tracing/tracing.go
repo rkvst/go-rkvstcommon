@@ -78,9 +78,25 @@ func HeaderMatcher(key string) (string, bool) {
 	return "", false
 }
 
-func NewTracer(serviceName string) io.Closer {
-        listenStr := fmt.Sprintf("localhost:%s", environment.GetOrFatal("PORT"))
-        return NewFromEnv(serviceName, listenStr, "ZIPKIN_ENDPOINT", "DISABLE_ZIPKIN");
+func trimPodName(p string) string {
+	a := strings.Split(p, "-")
+	i := len(a)
+	if i > 2 {
+		return strings.Join(a[:i-2], "-")
+	}
+	if i > 1 {
+		return strings.Join(a[:i-1], "-")
+	}
+	return p
+}
+
+func NewTracer() io.Closer {
+	instanceName, _, _ := strings.Cut(environment.GetOrFatal("POD_NAME"), " ") 
+	nameSpace := environment.GetOrFatal("POD_NAMESPACE")
+	containerName := environment.GetOrFatal("CONTAINER_NAME")
+	podName := strings.Join([]string{trimPodName(instanceName), nameSpace, containerName}, ".")
+	listenStr := fmt.Sprintf("localhost:%s", environment.GetOrFatal("PORT"))
+        return NewFromEnv(strings.TrimSpace(podName), listenStr, "ZIPKIN_ENDPOINT", "DISABLE_ZIPKIN");
 }
 
 // NewFromEnv initialises tracing and returns a closer if tracing is
@@ -113,7 +129,8 @@ func New(service string, host string, zipkinEndpoint string) io.Closer {
 	// create our local service endpoint
 	localEndpoint, err := zipkin.NewEndpoint(service, host)
 	if err != nil {
-		logger.Sugar.Fatalw("unable to create zipkin local endpoint", "service", service, "host", host, "err", err)
+		logger.Sugar.Panicf("unable to create zipkin local endpoint service '%s' - host '%s': %v", service, host, err)
+
 	}
 
 	// set up a span reporter
@@ -127,7 +144,7 @@ func New(service string, host string, zipkinEndpoint string) io.Closer {
 		zipkin.WithSharedSpans(false),
 	)
 	if err != nil {
-		logger.Sugar.Fatalw("unable to create zipkin tracer", "err", err)
+		logger.Sugar.Panicf("unable to create zipkin tracer: %v", err)
 	}
 
 	// use zipkin-go-opentracing to wrap our tracer
