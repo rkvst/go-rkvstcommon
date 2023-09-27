@@ -79,7 +79,7 @@ func HeaderMatcher(key string) (string, bool) {
 }
 
 func NewTracer(serviceName string) io.Closer {
-        listenStr := fmt.Sprintf(":%s", environment.GetOrFatal("PORT"))
+        listenStr := fmt.Sprintf("localhost:%s", environment.GetOrFatal("PORT"))
         return NewFromEnv(serviceName, listenStr, "ZIPKIN_ENDPOINT", "DISABLE_ZIPKIN");
 }
 
