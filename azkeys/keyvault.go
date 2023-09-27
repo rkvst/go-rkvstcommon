@@ -59,7 +59,7 @@ func (kv *KeyVault) GetKeyByKID(
 
 }
 
-// GetLatestKey returns the identified key
+// GetLatestKey returns the latest version of the identified key
 func (kv *KeyVault) GetLatestKey(
 	ctx context.Context, keyID string,
 ) (keyvault.KeyBundle, error) {
@@ -82,7 +82,7 @@ func (kv *KeyVault) GetLatestKey(
 	return key, nil
 }
 
-// GetKeyVersions returns all the keys for all the versions of the identified key.
+// GetKeyVersionsKeys returns all the keys, for all the versions of the identified key.
 //
 // The keys returned are the public half of the asymetric keys
 func (kv *KeyVault) GetKeyVersionsKeys(
