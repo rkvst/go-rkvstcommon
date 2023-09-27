@@ -6,3 +6,4 @@ on: [pull_request]
 jobs:
   check-pr:
     uses: rkvst/avid-builder/.github/workflows/verify-azure-issue.yml@master
+    
