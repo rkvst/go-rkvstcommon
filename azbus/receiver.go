@@ -9,7 +9,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
-	"github.com/opentracing/opentracing-go"
+	"github.com/rkvst/go-rkvstcommon/tracing"
 )
 
 var (
@@ -100,7 +100,7 @@ type Receiver struct {
 	mtx      sync.Mutex
 	receiver *azservicebus.Receiver
 	options  *azservicebus.ReceiverOptions
-	handler Handler
+	handler  Handler
 }
 
 type ReceiverOption func(*Receiver)
@@ -153,17 +153,17 @@ func (r *Receiver) String() string {
 }
 
 // elapsed emits 2 log messages detailing how long processing took.
-// TODO: emit the processing time as a prometheus metric.
 func (r *Receiver) elapsed(ctx context.Context, count int, total int, maxDuration time.Duration, msg *ReceivedMessage, handler Handler) error {
 	now := time.Now()
-	ctx = ContextFromReceivedMessage(ctx, msg)
+
 	log := r.log.FromContext(ctx)
 	defer log.Close()
 
 	log.Debugf("Processing message %d of %d", count, total)
-	err := handler.Handle(ctx, msg)
+	err := r.HandleReceivedMessageWithTracingContext(ctx, msg, handler)
 	duration := time.Since(now)
 	log.Debugf("Processing message %d took %s", count, duration)
+
 	// This is safe because maxDuration is only defined if RenewMessageLock is false.
 	if !r.Cfg.RenewMessageLock && duration >= maxDuration {
 		log.Infof("WARNING: processing msg %d duration %v took more than %v seconds", count, duration, maxDuration)
@@ -178,7 +178,6 @@ func (r *Receiver) elapsed(ctx context.Context, count int, total int, maxDuratio
 		}
 	}
 	return err
-
 }
 
 // RenewMessageLock renews the given messages peek lock, so it doesn't lose the lock and get re-added to the message queue.
@@ -349,7 +348,7 @@ func (r *Receiver) Abandon(ctx context.Context, err error, msg *ReceivedMessage)
 	log := r.log.FromContext(ctx)
 	defer log.Close()
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Message.Abandon")
+	span, ctx := tracing.StartSpanFromContext(ctx, "Message.Abandon")
 	defer span.Finish()
 	log.Infof("Abandon Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
 	err1 := r.receiver.AbandonMessage(ctx, msg, nil)
@@ -370,7 +369,7 @@ func (r *Receiver) Reschedule(ctx context.Context, err error, msg *ReceivedMessa
 	log := r.log.FromContext(ctx)
 	defer log.Close()
 
-	span, _ := opentracing.StartSpanFromContext(ctx, "Message.Reschedule")
+	span, _ := tracing.StartSpanFromContext(ctx, "Message.Reschedule")
 	defer span.Finish()
 	log.Infof("Reschedule Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
 	return nil
@@ -382,7 +381,7 @@ func (r *Receiver) DeadLetter(ctx context.Context, err error, msg *ReceivedMessa
 	log := r.log.FromContext(ctx)
 	defer log.Close()
 
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Message.DeadLetter")
+	span, ctx := tracing.StartSpanFromContext(ctx, "Message.DeadLetter")
 	defer span.Finish()
 	log.Infof("DeadLetter Message: %v", err)
 	options := azservicebus.DeadLetterOptions{
@@ -401,7 +400,7 @@ func (r *Receiver) Complete(ctx context.Context, msg *ReceivedMessage) error {
 	log := r.log.FromContext(ctx)
 	defer log.Close()
 
-	span, _ := opentracing.StartSpanFromContext(ctx, "Message.Complete")
+	span, _ := tracing.StartSpanFromContext(ctx, "Message.Complete")
 	defer span.Finish()
 
 	log.Infof("Complete Message")

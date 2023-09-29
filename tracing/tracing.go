@@ -2,6 +2,7 @@
 package tracing
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -44,6 +45,40 @@ var otHeaders = []string{
 	parentSpanID,
 	sampled,
 	flags,
+}
+
+func TraceIDFromContext(ctx context.Context) string {
+
+	span := opentracing.SpanFromContext(ctx)
+	traceState := make(map[string]string)
+	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, traceState)
+	if err != nil {
+		return ""
+	}
+
+	traceID, found := traceState[TraceID]
+	if !found || traceID == "" {
+		return ""
+	}
+	return traceID
+}
+
+func NewSpanContext(ctx context.Context, operationName string) (opentracing.Span, context.Context) {
+	span := opentracing.StartSpan(operationName)
+	ctx = opentracing.ContextWithSpan(ctx, span)
+	return span, ctx
+}
+
+func StartSpanFromContext(ctx context.Context, name string, options ...opentracing.StartSpanOption) (opentracing.Span, context.Context) {
+
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
+	log.Debugf("tracing.StartSpanFromContext")
+
+	tags := make(map[string]interface{})
+	tags["component"] = "RKVST"
+	options = append(options, opentracing.Tags(tags))
+	return opentracing.StartSpanFromContext(ctx, name, options...)
 }
 
 func HTTPMiddleware(h http.Handler) http.Handler {
@@ -91,12 +126,12 @@ func trimPodName(p string) string {
 }
 
 func NewTracer() io.Closer {
-	instanceName, _, _ := strings.Cut(environment.GetOrFatal("POD_NAME"), " ") 
+	instanceName, _, _ := strings.Cut(environment.GetOrFatal("POD_NAME"), " ")
 	nameSpace := environment.GetOrFatal("POD_NAMESPACE")
 	containerName := environment.GetOrFatal("CONTAINER_NAME")
 	podName := strings.Join([]string{trimPodName(instanceName), nameSpace, containerName}, ".")
 	listenStr := fmt.Sprintf("localhost:%s", environment.GetOrFatal("PORT"))
-        return NewFromEnv(strings.TrimSpace(podName), listenStr, "ZIPKIN_ENDPOINT", "DISABLE_ZIPKIN");
+	return NewFromEnv(strings.TrimSpace(podName), listenStr, "ZIPKIN_ENDPOINT", "DISABLE_ZIPKIN")
 }
 
 // NewFromEnv initialises tracing and returns a closer if tracing is
@@ -142,6 +177,7 @@ func New(service string, host string, zipkinEndpoint string) io.Closer {
 		reporter,
 		zipkin.WithLocalEndpoint(localEndpoint),
 		zipkin.WithSharedSpans(false),
+		zipkin.WithSampler(zipkin.AlwaysSample),
 	)
 	if err != nil {
 		logger.Sugar.Panicf("unable to create zipkin tracer: %v", err)

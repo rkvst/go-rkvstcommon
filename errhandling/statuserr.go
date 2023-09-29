@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/rkvst/go-rkvstcommon/correlationid"
 	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/rkvst/go-rkvstcommon/tracing"
 )
 
 // so we dont have to import status package everywhere
@@ -21,21 +21,21 @@ func NewStatus(c codes.Code, format string, args ...any) *Status {
 
 func StatusError(ctx context.Context, c codes.Code, fmt string, opts ...any) error {
 	s := NewStatus(c, fmt, opts...)
-	return StatusWithCorrelationIDFromContext(ctx, s).Err()
+	return StatusWithRequestInfoFromContext(ctx, s).Err()
 }
 
-func StatusWithCorrelationIDFromContext(ctx context.Context, s *Status) *Status {
-	correlationID := correlationid.FromContext(ctx)
-	if correlationID == "" {
-		logger.Sugar.Infof("no correlationID in context")
+func StatusWithRequestInfoFromContext(ctx context.Context, s *Status) *Status {
+	traceID := tracing.TraceIDFromContext(ctx)
+	if traceID == "" {
+		logger.Sugar.Infof("no traceID in context")
 		return s
 	}
-	logger.Sugar.Debugf("correlationID %s", correlationID)
+	logger.Sugar.Debugf("traceID %s", traceID)
 	st, err := s.WithDetails(&errdetails.RequestInfo{
-		RequestId: correlationID,
+		RequestId: traceID,
 	})
 	if err != nil {
-		logger.Sugar.Infof("cannot add correlationID %s: %v", correlationID, err)
+		logger.Sugar.Infof("cannot add traceID %s: %v", traceID, err)
 		return s
 	}
 	return st

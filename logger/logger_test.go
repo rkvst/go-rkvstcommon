@@ -7,8 +7,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
-// It is expected that WithContext will have correlation ID set
-func BenchmarkWrappedLogger_FromContextCorrelationID(b *testing.B) {
+// It is expected that WithContext will have trace ID set
+func BenchmarkWrappedLogger_FromContextTraceID(b *testing.B) {
 	tests := []struct {
 		name string
 	}{
@@ -21,7 +21,7 @@ func BenchmarkWrappedLogger_FromContextCorrelationID(b *testing.B) {
 
 			New("NOOP")
 
-			ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{correlationIDKey: {"foobar"}})
+			ctx := metadata.NewIncomingContext(context.Background(), metadata.MD{TraceID: {"foobar"}})
 			for n := 0; n < b.N; n++ {
 				func(inctx context.Context) {
 					log := Sugar.FromContext(inctx)

@@ -15,7 +15,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest/observer"
 
-	"github.com/rkvst/go-rkvstcommon/correlationid"
+	opentracing "github.com/opentracing/opentracing-go"
 )
 
 var (
@@ -27,8 +27,10 @@ var (
 )
 
 const (
-	correlationIDKey = correlationid.CorrelationIDKey
-	serviceNameKey   = "servicename"
+	serviceNameKey = "servicename"
+	// We repeat this constant here as we don't want the circular dependency
+	// of importint our tracing package
+	TraceIDKey = "x-b3-traceid"
 )
 
 // so we dont have to import zap everywhere
@@ -239,24 +241,34 @@ func New(level string, opts ...any) {
 	Sugar.Debugf("Memory Limit GOMEMLIMIT %v", GOMEMLIMIT)
 }
 
-// FromContext takes the following from the context and adds it to a child wrapped logger:
-//
-// * x-b3-traceid
+// FromContext takes the trace ID from the current span and adds it to a child wrapped logger:
 //
 // returns:
-//   - the new wrapped logger with a context metadata value for correlationID
+//   - the new wrapped logger with a context metadata value for traceID
 //
-// This will be called on entry to a method or a function that has a context.C.
+// This will be called on entry to a method or a function that has a context.Context.
 func (wl *WrappedLogger) FromContext(ctx context.Context) *WrappedLogger {
 
-	correlationID := correlationid.FromContext(ctx)
-
-	if correlationID == "" {
+	span := opentracing.SpanFromContext(ctx)
+	if span == nil {
+		Sugar.Debugf("FromContext: span is nil")
 		return wl
 	}
-	fields := []any{zap.String(correlationid.CorrelationIDKey, correlationID)}
+	carrier := opentracing.TextMapCarrier{}
+	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, carrier)
+	if err != nil {
+		Sugar.Debugf("FromContext: can't inject span: %v", err)
+		return wl
+	}
 
-	// add the Correlation ID to the logger
+	traceID, found := carrier[TraceIDKey]
+	if !found || traceID == "" {
+		Sugar.Debugf("FromContext: traceID not found")
+		return wl
+	}
+	fields := []any{zap.String(TraceIDKey, traceID)}
+
+	// add the trace ID to the logger
 	sugaredLogger := wl.With(fields...)
 
 	return &WrappedLogger{

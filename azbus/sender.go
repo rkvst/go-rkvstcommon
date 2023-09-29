@@ -7,10 +7,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
-	otrace "github.com/opentracing/opentracing-go"
 	otlog "github.com/opentracing/opentracing-go/log"
 
-	"github.com/rkvst/go-rkvstcommon/correlationid"
+	"github.com/rkvst/go-rkvstcommon/tracing"
 )
 
 // so we dont have to import the azure repo everywhere
@@ -131,14 +130,16 @@ func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMes
 
 	var err error
 
-	log := s.log.FromContext(ctx)
-	defer log.Close()
-
-	span, ctx := otrace.StartSpanFromContext(ctx, "Sender.Send")
+	span, ctx := tracing.StartSpanFromContext(ctx, "Sender.Send")
 	defer span.Finish()
 	span.LogFields(
 		otlog.String("sender", s.Cfg.TopicOrQueueName),
 	)
+
+	// Get the logging context after we create the span as that may have created a new
+	// trace and stashed the traceid in the metadata.
+	log := s.log.FromContext(ctx)
+	defer log.Close()
 
 	err = s.Open()
 	if err != nil {
@@ -158,11 +159,8 @@ func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMes
 	for _, opt := range opts {
 		opt(&message)
 	}
-	correlationID := correlationid.FromContext(ctx)
-	if correlationID != "" {
-		message.ApplicationProperties[correlationid.CorrelationIDKey] = correlationID
-	}
-	log.Debugf("ApplicationProperties %v", message.ApplicationProperties)
+	s.UpdateSendingMesssageForSpan(ctx, &message, span)
+
 	err = s.sender.SendMessage(ctx, &message, nil)
 	if err != nil {
 		azerr := fmt.Errorf("Send failed in %s: %w", time.Since(now), NewAzbusError(err))

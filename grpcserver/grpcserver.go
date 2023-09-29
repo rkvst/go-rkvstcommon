@@ -52,6 +52,13 @@ func WithRegisterServer(r RegisterServer) GRPCServerOption {
 	}
 }
 
+func tracingFilter(ctx context.Context, fullMethodName string) bool {
+	if fullMethodName == grpcHealth.Health_Check_FullMethodName {
+		return false
+	}
+	return true
+}
+
 // NewGRPCServer cretaes a new GRPCServer that is bound to a specific GRPC API. This object complies with
 // the standard Listener service and can be managed by the startup.Listeners object.
 func NewGRPCServer(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
@@ -65,8 +72,7 @@ func NewGRPCServer(log Logger, name string, opts ...GRPCServerOption) GRPCServer
 		health:    &health,
 		register:  defaultRegisterServer,
 		interceptors: []grpc.UnaryServerInterceptor{
-			CorrelationIDUnaryServerInterceptor(),
-			grpc_otrace.UnaryServerInterceptor(),
+			grpc_otrace.UnaryServerInterceptor(grpc_otrace.WithFilterFunc(tracingFilter)),
 			grpc_validator.UnaryServerInterceptor(),
 		},
 	}

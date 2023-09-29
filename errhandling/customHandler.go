@@ -21,7 +21,7 @@ const (
 
 // SetQuotaReached returns a labelled QuotaReached error
 func SetQuotaReached(ctx context.Context, tenantID string, name string) error {
-	return StatusWithCorrelationIDFromContext(
+	return StatusWithRequestInfoFromContext(
 		ctx,
 		StatusWithQuotaFailure(tenantID, QuotaReached, name),
 	).Err()
@@ -29,7 +29,7 @@ func SetQuotaReached(ctx context.Context, tenantID string, name string) error {
 
 // SetQuotaUnknown returns a labelled QuotaUnknown error
 func SetQuotaUnknown(ctx context.Context, tenantID string, name string, err error) error {
-	return StatusWithCorrelationIDFromContext(
+	return StatusWithRequestInfoFromContext(
 		ctx,
 		StatusWithQuotaFailure(tenantID, QuotaUnknown, fmt.Sprintf("%s: %v", name, err)),
 	).Err()
@@ -37,7 +37,7 @@ func SetQuotaUnknown(ctx context.Context, tenantID string, name string, err erro
 
 // SetKhipuUnknown returns a labelled KhipuUnknown error
 func SetKhipuUnknown(ctx context.Context, tenantID string) error {
-	return StatusWithCorrelationIDFromContext(
+	return StatusWithRequestInfoFromContext(
 		ctx,
 		StatusWithQuotaFailure(tenantID, KhipuUnknown, ""),
 	).Err()
@@ -45,7 +45,7 @@ func SetKhipuUnknown(ctx context.Context, tenantID string) error {
 
 // SetKhipuDisabled returns a labelled KhipuUnknown error
 func SetKhipuDisabled(ctx context.Context, tenantID string) error {
-	return StatusWithCorrelationIDFromContext(
+	return StatusWithRequestInfoFromContext(
 		ctx,
 		StatusWithQuotaFailure(tenantID, KhipuDisabled, ""),
 	).Err()
