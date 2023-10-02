@@ -50,6 +50,9 @@ var otHeaders = []string{
 func TraceIDFromContext(ctx context.Context) string {
 
 	span := opentracing.SpanFromContext(ctx)
+	if span == nil {
+		return ""
+	}
 	traceState := make(map[string]string)
 	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, traceState)
 	if err != nil {
@@ -65,6 +68,9 @@ func TraceIDFromContext(ctx context.Context) string {
 
 func NewSpanContext(ctx context.Context, operationName string) (opentracing.Span, context.Context) {
 	span := opentracing.StartSpan(operationName)
+	if span == nil {
+		return nil, ctx
+	}
 	ctx = opentracing.ContextWithSpan(ctx, span)
 	return span, ctx
 }
