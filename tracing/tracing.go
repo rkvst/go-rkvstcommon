@@ -177,7 +177,6 @@ func New(service string, host string, zipkinEndpoint string) io.Closer {
 		reporter,
 		zipkin.WithLocalEndpoint(localEndpoint),
 		zipkin.WithSharedSpans(false),
-		zipkin.WithSampler(zipkin.AlwaysSample),
 	)
 	if err != nil {
 		logger.Sugar.Panicf("unable to create zipkin tracer: %v", err)
