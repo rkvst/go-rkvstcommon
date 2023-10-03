@@ -35,6 +35,12 @@ func WithListener(h Listener) ListenersOption {
 	}
 }
 
+func WithListeners(h []Listener) ListenersOption {
+	return func(l *Listeners) {
+		l.listeners = append(l.listeners, h...)
+	}
+}
+
 func NewListeners(log Logger, name string, opts ...ListenersOption) Listeners {
 	l := Listeners{log: log, name: name}
 	for _, opt := range opts {
@@ -45,10 +51,6 @@ func NewListeners(log Logger, name string, opts ...ListenersOption) Listeners {
 
 func (l *Listeners) String() string {
 	return l.name
-}
-
-func (l *Listeners) AddListener(h Listener) {
-	l.listeners = append(l.listeners, h)
 }
 
 func (l *Listeners) Listen() error {
