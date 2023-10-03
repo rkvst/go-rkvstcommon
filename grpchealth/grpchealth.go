@@ -8,7 +8,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
 	"google.golang.org/grpc/health/grpc_health_v1"
 )
 
@@ -21,14 +20,16 @@ type HealthCheckingService struct {
 	grpc_health_v1.UnimplementedHealthServer
 	sync.RWMutex
 	healthStatus map[string]grpc_health_v1.HealthCheckResponse_ServingStatus
+	log Logger
 }
 
-func New() HealthCheckingService {
+func New(log Logger) HealthCheckingService {
 	return HealthCheckingService{
 		healthStatus: map[string]grpc_health_v1.HealthCheckResponse_ServingStatus{
 			livenessServiceName:  grpc_health_v1.HealthCheckResponse_SERVING,
 			readinessServiceName: grpc_health_v1.HealthCheckResponse_NOT_SERVING,
 		},
+		log: log,
 	}
 }
 
@@ -36,14 +37,14 @@ func (s *HealthCheckingService) serving(service string) {
 	s.Lock()
 	defer s.Unlock()
 	s.healthStatus[service] = grpc_health_v1.HealthCheckResponse_SERVING
-	logger.Sugar.Infof("Health set to 'SERVING': %s", service)
+	s.log.Infof("Health set to 'SERVING': %s", service)
 }
 
 func (s *HealthCheckingService) notServing(service string) {
 	s.Lock()
 	defer s.Unlock()
 	s.healthStatus[service] = grpc_health_v1.HealthCheckResponse_NOT_SERVING
-	logger.Sugar.Infof("Health set to 'NOT_SERVING': %s", service)
+	s.log.Infof("Health set to 'NOT_SERVING': %s", service)
 }
 
 // Dead - changes status of service to dead
@@ -77,31 +78,30 @@ func (s *HealthCheckingService) Check(ctx context.Context, in *grpc_health_v1.He
 		for _, v := range s.healthStatus {
 			// logger.Sugar.Debugf("Health Check for '%s'-> '%s'", in.Service, v.String())
 			if v != grpc_health_v1.HealthCheckResponse_SERVING {
-				logger.Sugar.Infof("Health Check '%s' is NOT SERVING: '%s'", in.Service, v.String())
+				s.log.Infof("Health Check '%s' is NOT SERVING: '%s'", in.Service, v.String())
 				return &grpc_health_v1.HealthCheckResponse{
 					Status: v,
 				}, nil
 			}
 		}
-		logger.Sugar.Infof("Health Check '%s' is SERVING", in.Service)
+		s.log.Infof("Health Check '%s' is SERVING", in.Service)
 		return &grpc_health_v1.HealthCheckResponse{
 			Status: grpc_health_v1.HealthCheckResponse_SERVING,
 		}, nil
 	}
 	if stat, ok := s.healthStatus[in.Service]; ok {
-		// logger.Sugar.Debugf("Health Check '%s' -> '%s'", in.Service, stat.String())
-		logger.Sugar.Infof("Health Check '%s' is `%s'", in.Service, stat)
+		s.log.Debugf("Health Check '%s' is `%s'", in.Service, stat)
 		return &grpc_health_v1.HealthCheckResponse{
 			Status: stat,
 		}, nil
 	}
 	err := status.Error(codes.NotFound, "unknown service: "+in.Service)
 
-	logger.Sugar.Infof("Health Check failed: %v", err)
+	s.log.Infof("Health Check failed: %v", err)
 	return nil, err
 }
 
 func (s *HealthCheckingService) Watch(in *grpc_health_v1.HealthCheckRequest, w grpc_health_v1.Health_WatchServer) error {
-	logger.Sugar.Infof("Health Check watch not supported")
+	s.log.Infof("Health Check watch not supported")
 	return status.Error(codes.Unimplemented, "watch not supported")
 }

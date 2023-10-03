@@ -64,7 +64,7 @@ func tracingFilter(ctx context.Context, fullMethodName string) bool {
 func NewGRPCServer(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
 	listenStr := fmt.Sprintf(":%s", env.GetOrFatal("PORT"))
 
-	health := grpchealth.New()
+	health := grpchealth.New(log)
 
 	g := GRPCServer{
 		name:      name,
