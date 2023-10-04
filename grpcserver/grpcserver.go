@@ -38,9 +38,14 @@ type GRPCServer struct {
 
 type GRPCServerOption func(*GRPCServer)
 
-func WithInterceptor(i grpcUnaryServerInterceptor) GRPCServerOption {
+func WithAppendedInterceptor(i grpcUnaryServerInterceptor) GRPCServerOption {
 	return func(g *GRPCServer) {
-		// Note that this is **prepending**
+		g.interceptors = append(g.interceptors, i)
+	}
+}
+
+func WithPrependedInterceptor(i grpcUnaryServerInterceptor) GRPCServerOption {
+	return func(g *GRPCServer) {
 		g.interceptors = append([]grpcUnaryServerInterceptor{i}, g.interceptors...)
 	}
 }

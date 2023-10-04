@@ -19,6 +19,7 @@ import (
 	"github.com/rkvst/go-rkvstcommon/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	grpcHealth "google.golang.org/grpc/health/grpc_health_v1"
 
 	zipkinot "github.com/openzipkin-contrib/zipkin-go-opentracing"
 	zipkin "github.com/openzipkin/zipkin-go"
@@ -48,7 +49,6 @@ var otHeaders = []string{
 }
 
 func TraceIDFromContext(ctx context.Context) string {
-
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		return ""
@@ -97,11 +97,20 @@ func HTTPMiddleware(h http.Handler) http.Handler {
 	)
 }
 
+func tracingFilter(ctx context.Context, fullMethodName string) bool {
+	if fullMethodName == grpcHealth.Health_Check_FullMethodName {
+		return false
+	}
+	return true
+}
+
 // GRPCDialTracingOptions returns DialOption enabling open tracing for grpc connections
 func GRPCDialTracingOptions() []grpc.DialOption {
 	return []grpc.DialOption{
-		grpc.WithStreamInterceptor(grpc_otrace.StreamClientInterceptor()),
-		grpc.WithUnaryInterceptor(grpc_otrace.UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(
+			grpc_otrace.StreamClientInterceptor()),
+		grpc.WithUnaryInterceptor(
+			grpc_otrace.UnaryClientInterceptor(grpc_otrace.WithFilterFunc(tracingFilter))),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 }

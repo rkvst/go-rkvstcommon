@@ -241,6 +241,15 @@ func New(level string, opts ...any) {
 	Sugar.Debugf("Memory Limit GOMEMLIMIT %v", GOMEMLIMIT)
 }
 
+func valueFromCarrier(carrier opentracing.TextMapCarrier, key string) string {
+	value, found := carrier[key]
+	if !found || value == "" {
+		Sugar.Debugf("%s not found", key)
+		return ""
+	}
+	return value
+}
+
 // FromContext takes the trace ID from the current span and adds it to a child wrapped logger:
 //
 // returns:
@@ -261,14 +270,16 @@ func (wl *WrappedLogger) FromContext(ctx context.Context) *WrappedLogger {
 		return wl
 	}
 
-	traceID, found := carrier[TraceIDKey]
-	if !found || traceID == "" {
-		Sugar.Debugf("FromContext: traceID not found")
+	fields := []any{}
+	traceID := valueFromCarrier(carrier, TraceIDKey)
+	if traceID != "" {
+		fields = append(fields, zap.String(TraceIDKey, traceID))
+	}
+
+	if len(fields) == 0 {
 		return wl
 	}
-	fields := []any{zap.String(TraceIDKey, traceID)}
-
-	// add the trace ID to the logger
+	// add the fields to the logger
 	sugaredLogger := wl.With(fields...)
 
 	return &WrappedLogger{
