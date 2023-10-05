@@ -24,8 +24,7 @@ type grpcUnaryServerInterceptor = grpc.UnaryServerInterceptor
 
 type RegisterServer func(*grpcServer)
 
-func defaultRegisterServer(g *grpcServer) {
-}
+func defaultRegisterServer(g *grpcServer) {}
 
 type GRPCServer struct {
 	name         string

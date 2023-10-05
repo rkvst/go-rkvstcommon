@@ -100,10 +100,8 @@ func HTTPMiddleware(h http.Handler) http.Handler {
 // GRPCDialTracingOptions returns DialOption enabling open tracing for grpc connections
 func GRPCDialTracingOptions() []grpc.DialOption {
 	return []grpc.DialOption{
-		grpc.WithStreamInterceptor(
-			grpc_otrace.StreamClientInterceptor()),
-		grpc.WithUnaryInterceptor(
-			grpc_otrace.UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(grpc_otrace.StreamClientInterceptor()),
+		grpc.WithUnaryInterceptor(grpc_otrace.UnaryClientInterceptor()),
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	}
 }
