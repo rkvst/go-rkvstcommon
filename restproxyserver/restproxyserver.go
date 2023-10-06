@@ -23,6 +23,7 @@ type RegisterRESTProxyServer func(context.Context, *runtime.ServeMux, string, []
 
 type RESTProxyServer struct {
 	name        string
+	port        string
 	log         Logger
 	grpcAddress   string
 	dialOptions []DialOption
@@ -42,11 +43,15 @@ func WithMarshaler(mime string, m Marshaler) RESTProxyServerOption {
 // NewRESTProxyServer cretaes a new RESTProxyServer that is bound to a specific GRPC Gateway API. This object complies with
 // the standard Listener service and can be managed by the startup.Listeners object.
 func New(log Logger, name string, r RegisterRESTProxyServer, opts ...RESTProxyServerOption) RESTProxyServer {
-	port := env.GetOrFatal("RESTPROXY_PORT")
-	grpcAddress := fmt.Sprintf("localhost:%s", port)
+	log.Debugf("New RESTPROXY Server %s", name)
+
+	grpcAddress := fmt.Sprintf("localhost:%s", env.GetOrFatal("PORT"))
+
+	restport := env.GetOrFatal("RESTPROXY_PORT")
 
 	g := RESTProxyServer{
 		name:      name,
+		port:      restport,
 		grpcAddress: grpcAddress,
 		register:  r,
 		dialOptions: []DialOption{
@@ -55,9 +60,11 @@ func New(log Logger, name string, r RegisterRESTProxyServer, opts ...RESTProxySe
 		},
 		options: []runtime.ServeMuxOption{},
 	}
+	g.log = log.WithIndex("restproxyserver", g.String())
 	for _, opt := range opts {
 		opt(&g)
 	}
+	log.Debugf("RESTPROXY Server %v", g)
 
 	//err = anchorscheduler.RegisterAnchorSchedulerHandlerFromEndpoint(...)
 	mux := runtime.NewServeMux(g.options...)
@@ -66,15 +73,14 @@ func New(log Logger, name string, r RegisterRESTProxyServer, opts ...RESTProxySe
 		log.Panicf("register error: %w", err)
 	}
 
-	g.log = log.WithIndex("restproxyserver", g.String())
 
-	g.server = httpserver.NewHTTPServer(g.log, name, port, mux)
+	g.server = httpserver.NewHTTPServer(g.log, g.name, g.port, mux)
 	return g
 }
 
 func (g *RESTProxyServer) String() string {
 	// No logging in this method please.
-	return fmt.Sprintf("%s%s", g.name, g.grpcAddress)
+	return fmt.Sprintf("%s:%s", g.name, g.port)
 }
 
 func (g *RESTProxyServer) Listen() error {
