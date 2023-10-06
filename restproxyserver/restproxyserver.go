@@ -1,7 +1,5 @@
 package restproxyserver
 
-// XXXX: to be moved to go-rkvstcommon
-
 import (
 	"context"
 	"fmt"
@@ -16,9 +14,10 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-type runtimeMarshaler = runtime.Marshaler
-type runtimeServeMux = runtime.ServeMux
-type grpcDialOption = grpc.DialOption
+const MIMEWildcard = runtime.MIMEWildcard
+type Marshaler = runtime.Marshaler
+type ServeMux = runtime.ServeMux
+type DialOption = grpc.DialOption
 
 type RegisterRESTProxyServer func(context.Context, *runtime.ServeMux, string, []grpc.DialOption) error
 
@@ -26,7 +25,7 @@ type RESTProxyServer struct {
 	name        string
 	log         Logger
 	grpcAddress   string
-	dialOptions []grpcDialOption
+	dialOptions []DialOption
 	options     []runtime.ServeMuxOption
 	register    RegisterRESTProxyServer
 	server      *httpserver.HTTPServer
@@ -34,7 +33,7 @@ type RESTProxyServer struct {
 
 type RESTProxyServerOption func(*RESTProxyServer)
 
-func WithMarshaler(mime string, m runtimeMarshaler) RESTProxyServerOption {
+func WithMarshaler(mime string, m Marshaler) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
 		g.options = append(g.options, runtime.WithMarshalerOption(mime, m))
 	}
@@ -50,7 +49,7 @@ func New(log Logger, name string, r RegisterRESTProxyServer, opts ...RESTProxySe
 		name:      name,
 		grpcAddress: grpcAddress,
 		register:  r,
-		dialOptions: []grpcDialOption{
+		dialOptions: []DialOption{
 			grpc.WithUnaryInterceptor(grpc_otrace.UnaryClientInterceptor()),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 		},
@@ -67,7 +66,7 @@ func New(log Logger, name string, r RegisterRESTProxyServer, opts ...RESTProxySe
 		log.Panicf("register error: %w", err)
 	}
 
-	g.log = log.WithIndex("restProxyserver", g.String())
+	g.log = log.WithIndex("restproxyserver", g.String())
 
 	g.server = httpserver.NewHTTPServer(g.log, name, port, mux)
 	return g
@@ -79,7 +78,7 @@ func (g *RESTProxyServer) String() string {
 }
 
 func (g *RESTProxyServer) Listen() error {
-	g.log.Infof("Listening")
+	g.log.Infof("Listen")
 	return g.server.Listen()
 }
 

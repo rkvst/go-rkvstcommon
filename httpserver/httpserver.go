@@ -36,7 +36,7 @@ func (m *HTTPServer) String() string {
 }
 
 func (m *HTTPServer) Listen() error {
-	m.log.Infof("httpserver starting")
+	m.log.Infof("Listen")
 	err := m.ListenAndServe()
 	if err != nil {
 		return fmt.Errorf("%s server terminated: %v", m, err)
@@ -47,6 +47,6 @@ func (m *HTTPServer) Listen() error {
 func (m *HTTPServer) Shutdown(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	m.log.Infof("httpserver shutdown")
+	m.log.Infof(" shutdown")
 	return m.Server.Shutdown(ctx)
 }
