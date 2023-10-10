@@ -33,7 +33,7 @@ var (
 	ErrPeekLockTimeout = errors.New("peeklock deadline reached")
 )
 
-func setTimeout(ctx context.Context, log Logger, msg *ReceivedMessage) (context.Context, context.CancelFunc, time.Duration) {
+func (r *Receiver) setTimeout(ctx context.Context, log Logger, msg *ReceivedMessage) (context.Context, context.CancelFunc, time.Duration) {
 
 	var cancel context.CancelFunc
 
@@ -46,7 +46,7 @@ func setTimeout(ctx context.Context, log Logger, msg *ReceivedMessage) (context.
 		return ctx, cancel, maxDuration
 	}
 
-	ctx, cancel = context.WithTimeoutCause(ctx, RenewalTime, ErrPeekLockTimeout)
+	ctx, cancel = context.WithTimeoutCause(ctx, r.Cfg.RenewMessageTime, ErrPeekLockTimeout)
 	log.Infof("could not get lock deadline from message, using fixed timeout %v", ctx)
-	return ctx, cancel, RenewalTime
+	return ctx, cancel, r.Cfg.RenewMessageTime
 }

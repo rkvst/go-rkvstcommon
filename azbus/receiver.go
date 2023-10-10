@@ -85,6 +85,7 @@ type ReceiverConfig struct {
 	// See azbus/receiver.go
 	NumberOfReceivedMessages int
 	RenewMessageLock         bool
+	RenewMessageTime         time.Duration
 
 	// If a deadletter receiver then this is true
 	Deadletter bool
@@ -111,6 +112,19 @@ func WithHandler(h Handler) ReceiverOption {
 	}
 }
 
+// WithRenewalTime takes an optional time to renew the peek lock. This should be comfortably less
+// than the peek lock timeout. For example: the default peek lock timeout is 60s and the default
+// renewal time is 50s.
+//
+// Note! Only use this if you know what you're doing and you require custom timeout behaviour. The
+// peek lock timeout is specified in terraform configs currently, as it is a property of
+// subscriptions or queues.
+func WithRenewalTime(t int) ReceiverOption {
+	return func(r *Receiver) {
+		r.Cfg.RenewMessageTime = time.Duration(t) * time.Second
+	}
+}
+
 func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiver {
 	var options *azservicebus.ReceiverOptions
 	if cfg.Deadletter {
@@ -128,6 +142,11 @@ func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiv
 	r.log = log.WithIndex("receiver", r.String())
 	for _, opt := range opts {
 		opt(&r)
+	}
+
+	// Set this to a default that corresponds to the az servicebus default peek-lock timeout
+	if r.Cfg.RenewMessageTime == 0 {
+		r.Cfg.RenewMessageTime = RenewalTime
 	}
 
 	return &r
@@ -186,7 +205,7 @@ func (r *Receiver) elapsed(ctx context.Context, count int, total int, maxDuratio
 func (r *Receiver) receiverRenewMessageLock(ctx context.Context, count int, msg *ReceivedMessage) {
 	var err error
 
-	ticker := time.NewTicker(RenewalTime)
+	ticker := time.NewTicker(r.Cfg.RenewMessageTime)
 
 	var counter int
 	r.log.Debugf("RenewMessageLock %d started", count)
