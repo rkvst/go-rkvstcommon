@@ -282,7 +282,7 @@ func (r *Receiver) ReceiveMessages(handler Handler) error {
 				if r.Cfg.RenewMessageLock {
 					rctx = fctx
 				} else {
-					rctx, rcancel, maxDuration = setTimeout(fctx, r.log, msg)
+					rctx, rcancel, maxDuration = r.setTimeout(fctx, r.log, msg)
 					defer rcancel()
 				}
 				elapsedErr := r.elapsed(rctx, i+1, total, maxDuration, msg, handler)
