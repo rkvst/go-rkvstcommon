@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	//grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
@@ -71,7 +72,7 @@ func NewGRPCServer(log Logger, name string, opts ...GRPCServerOption) GRPCServer
 	health := grpchealth.New(log)
 
 	g := GRPCServer{
-		name:      name,
+		name:      strings.ToLower(name),
 		listenStr: listenStr,
 		health:    &health,
 		register:  defaultRegisterServer,

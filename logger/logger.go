@@ -7,6 +7,7 @@ import (
 	"log"
 	"runtime"
 	"runtime/debug"
+	"strings"
 	"syscall"
 
 	_ "github.com/KimMachineGun/automemlimit"
@@ -293,7 +294,7 @@ func (wl *WrappedLogger) WithServiceName(servicename string) *WrappedLogger {
 
 func (wl *WrappedLogger) WithIndex(key, value string) *WrappedLogger {
 	return &WrappedLogger{
-		SugaredLogger: wl.With(zap.String(key, value)),
+		SugaredLogger: wl.With(zap.String(key, strings.ToLower(value))),
 	}
 }
 

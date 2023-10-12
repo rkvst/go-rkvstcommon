@@ -20,7 +20,7 @@ type HealthCheckingService struct {
 	grpc_health_v1.UnimplementedHealthServer
 	sync.RWMutex
 	healthStatus map[string]grpc_health_v1.HealthCheckResponse_ServingStatus
-	log Logger
+	log          Logger
 }
 
 func New(log Logger) HealthCheckingService {

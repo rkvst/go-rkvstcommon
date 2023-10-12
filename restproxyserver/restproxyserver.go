@@ -3,6 +3,7 @@ package restproxyserver
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	grpc_otrace "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 
@@ -15,6 +16,7 @@ import (
 )
 
 const MIMEWildcard = runtime.MIMEWildcard
+
 type Marshaler = runtime.Marshaler
 type ServeMux = runtime.ServeMux
 type DialOption = grpc.DialOption
@@ -25,11 +27,11 @@ type RESTProxyServer struct {
 	name        string
 	port        string
 	log         Logger
-	grpcAddress   string
+	grpcAddress string
 	dialOptions []DialOption
 	options     []runtime.ServeMuxOption
 	register    RegisterRESTProxyServer
-	server      *httpserver.HTTPServer
+	server      *httpserver.Server
 }
 
 type RESTProxyServerOption func(*RESTProxyServer)
@@ -40,8 +42,8 @@ func WithMarshaler(mime string, m Marshaler) RESTProxyServerOption {
 	}
 }
 
-// NewRESTProxyServer cretaes a new RESTProxyServer that is bound to a specific GRPC Gateway API. This object complies with
-// the standard Listener service and can be managed by the startup.Listeners object.
+// New creates a new RESTProxyServer that is bound to a specific GRPC Gateway API. This object complies with
+// the standard Listener interface and can be managed by the startup.Listeners object.
 func New(log Logger, name string, r RegisterRESTProxyServer, opts ...RESTProxyServerOption) RESTProxyServer {
 	log.Debugf("New RESTPROXY Server %s", name)
 
@@ -50,10 +52,10 @@ func New(log Logger, name string, r RegisterRESTProxyServer, opts ...RESTProxySe
 	restport := env.GetOrFatal("RESTPROXY_PORT")
 
 	g := RESTProxyServer{
-		name:      name,
-		port:      restport,
+		name:        strings.ToLower(name),
+		port:        restport,
 		grpcAddress: grpcAddress,
-		register:  r,
+		register:    r,
 		dialOptions: []DialOption{
 			grpc.WithUnaryInterceptor(grpc_otrace.UnaryClientInterceptor()),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -66,15 +68,15 @@ func New(log Logger, name string, r RegisterRESTProxyServer, opts ...RESTProxySe
 	}
 	log.Debugf("RESTPROXY Server %v", g)
 
-	//err = anchorscheduler.RegisterAnchorSchedulerHandlerFromEndpoint(...)
 	mux := runtime.NewServeMux(g.options...)
+
+	//err = anchorscheduler.RegisterAnchorSchedulerHandlerFromEndpoint(...)
 	err := g.register(context.Background(), mux, grpcAddress, g.dialOptions)
 	if err != nil {
 		log.Panicf("register error: %w", err)
 	}
 
-
-	g.server = httpserver.NewHTTPServer(g.log, g.name, g.port, mux)
+	g.server = httpserver.New(g.log, g.name, g.port, mux)
 	return g
 }
 

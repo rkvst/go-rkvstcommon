@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -31,18 +32,24 @@ type ListenersOption func(*Listeners)
 
 func WithListener(h Listener) ListenersOption {
 	return func(l *Listeners) {
-		l.listeners = append(l.listeners, h)
+		if h != nil {
+			l.listeners = append(l.listeners, h)
+		}
 	}
 }
 
 func WithListeners(h []Listener) ListenersOption {
 	return func(l *Listeners) {
-		l.listeners = append(l.listeners, h...)
+		for i := 0; i < len(h); i++ {
+			if h[i] != nil {
+				l.listeners = append(l.listeners, h[i])
+			}
+		}
 	}
 }
 
 func NewListeners(log Logger, name string, opts ...ListenersOption) Listeners {
-	l := Listeners{log: log, name: name}
+	l := Listeners{log: log, name: strings.ToLower(name)}
 	for _, opt := range opts {
 		opt(&l)
 	}

@@ -4,26 +4,35 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 )
 
 // A http server that has an inbuilt logger, name and complies wuth the Listener interface in
 // startup.Listeners.
 
-type HTTPServer struct {
+type Server struct {
 	http.Server
 	log  Logger
 	name string
 }
 
-func NewHTTPServer(log Logger, name string, port string, handler http.Handler) *HTTPServer {
+type ServerOption func(*Server)
+
+//func WithInterceptor(i grpcUnaryServerInterceptor) ServerOption {
+//       return func(i *Server) {
+//              g.interceptors = append(g.interceptors, i)
+//     }
+//}
+
+func New(log Logger, name string, port string, handler http.Handler) *Server {
 	log.Debugf("New HTTPServer %s", name)
-	m := HTTPServer{
+	m := Server{
 		Server: http.Server{
 			Addr:    ":" + port,
 			Handler: handler,
 		},
-		name: name,
+		name: strings.ToLower(name),
 	}
 	m.log = log.WithIndex("httpserver", m.String())
 	// It is preferable to return a copy rather than a reference. Unfortunately http.Server has an
@@ -32,21 +41,21 @@ func NewHTTPServer(log Logger, name string, port string, handler http.Handler) *
 	return &m
 }
 
-func (m *HTTPServer) String() string {
+func (m *Server) String() string {
 	// No logging here please
 	return fmt.Sprintf("%s%s", m.name, m.Addr)
 }
 
-func (m *HTTPServer) Listen() error {
+func (m *Server) Listen() error {
 	m.log.Infof("Listen")
-	err := m.ListenAndServe()
+	err := m.Server.ListenAndServe()
 	if err != nil {
 		return fmt.Errorf("%s server terminated: %v", m, err)
 	}
 	return nil
 }
 
-func (m *HTTPServer) Shutdown(ctx context.Context) error {
+func (m *Server) Shutdown(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	m.log.Infof("Shutdown")
