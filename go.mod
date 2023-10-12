@@ -41,7 +41,6 @@ require (
 
 require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
-	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/google/uuid v1.3.1 // indirect
 )
 
