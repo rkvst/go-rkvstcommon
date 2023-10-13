@@ -28,7 +28,7 @@ func NewHTTPServer(log Logger, name string, port string, handler http.Handler) *
 	m.log = log.WithIndex("httpserver", m.String())
 	// It is preferable to return a copy rather than a reference. Unfortunately http.Server has an
 	// internal mutex and this cannot or should not be copied so we will return a reference instead.
-	log.Debugf("HTTPServer %v", m)
+	log.Debugf("HTTPServer")
 	return &m
 }
 
