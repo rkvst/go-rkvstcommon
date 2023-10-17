@@ -37,6 +37,7 @@ tasks:
         go vet ./...
         goimports {{.VERBOSE}} -w .
         golangci-lint {{.VERBOSE}} run --timeout 10m ./...
+        gofmt -l -s -w .
 
   unit-tests:
     desc: "run unit tests"
