@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -16,14 +17,6 @@ type Server struct {
 	log  Logger
 	name string
 }
-
-type ServerOption func(*Server)
-
-//func WithInterceptor(i grpcUnaryServerInterceptor) ServerOption {
-//       return func(i *Server) {
-//              g.interceptors = append(g.interceptors, i)
-//     }
-//}
 
 func New(log Logger, name string, port string, handler http.Handler) *Server {
 	log.Debugf("New HTTPServer %s", name)
@@ -59,5 +52,9 @@ func (m *Server) Shutdown(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	m.log.Infof("Shutdown")
-	return m.Server.Shutdown(ctx)
+	err := m.Server.Shutdown(ctx)
+	if err != nil && !errors.Is(err, http.ErrServerClosed) && !errors.Is(err, context.Canceled) {
+		return err
+	}
+	return nil
 }

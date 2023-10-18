@@ -49,10 +49,11 @@ func WithListeners(h []Listener) ListenersOption {
 }
 
 func NewListeners(log Logger, name string, opts ...ListenersOption) Listeners {
-	l := Listeners{log: log, name: strings.ToLower(name)}
+	l := Listeners{name: strings.ToLower(name)}
 	for _, opt := range opts {
 		opt(&l)
 	}
+	l.log = log.WithIndex("listener", l.String())
 	return l
 }
 
