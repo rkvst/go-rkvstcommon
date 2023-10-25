@@ -96,7 +96,7 @@ func WithGRPCAddress(a string) RESTProxyServerOption {
 	}
 }
 
-// WikthRegisterHandler adds another grpc-gateway handler
+// WithRegisterHandler adds another grpc-gateway handler
 func WithRegisterHandler(r RegisterRESTProxyServer) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
 		g.registers = append(g.registers, r)

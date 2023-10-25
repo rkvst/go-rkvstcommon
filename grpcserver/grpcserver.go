@@ -64,9 +64,9 @@ func tracingFilter(ctx context.Context, fullMethodName string) bool {
 	return true
 }
 
-// NewGRPCServer cretaes a new GRPCServer that is bound to a specific GRPC API. This object complies with
+// New cretaes a new GRPCServer that is bound to a specific GRPC API. This object complies with
 // the standard Listener service and can be managed by the startup.Listeners object.
-func NewGRPCServer(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
+func New(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
 	listenStr := fmt.Sprintf(":%s", env.GetOrFatal("PORT"))
 
 	health := grpchealth.New(log)
