@@ -32,6 +32,7 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/openzipkin-contrib/zipkin-go-opentracing v0.5.0
 	github.com/openzipkin/zipkin-go v0.4.2
+	github.com/prometheus/client_golang v1.0.0
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.25.0
@@ -43,6 +44,12 @@ require (
 require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
+	github.com/beorn7/perks v1.0.0 // indirect
+	github.com/google/uuid v1.3.1 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
+	github.com/prometheus/common v0.6.0 // indirect
+	github.com/prometheus/procfs v0.0.2 // indirect
 )
 
 require (
