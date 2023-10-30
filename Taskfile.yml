@@ -20,6 +20,9 @@ includes:
     taskfile: ./taskfiles/Taskfile_codeqa.yml
   mocks:
     taskfile: ./taskfiles/Taskfile_mocks.yml
+  azurite:
+    taskfile: ./taskfiles/Taskfile_azurite.yml
+    dir: ./taskfiles
 
 tasks:
 

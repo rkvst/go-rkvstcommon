@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +19,10 @@ import (
 	mimetype "github.com/gabriel-vasile/mimetype"
 
 	"github.com/rkvst/go-rkvstcommon/logger"
+)
+
+var (
+	ErrMustSupportSeek0 = errors.New("must be seekable to position 0")
 )
 
 const (
@@ -101,7 +106,7 @@ func (azp *Storer) Write(
 		opt(options)
 	}
 
-	_, err = azp.write(ctx, identity, source, options.leaseID)
+	_, err = azp.writeStream(ctx, identity, source, options.leaseID)
 	if err != nil {
 		return nil, err
 	}
@@ -143,13 +148,11 @@ func (azp *Storer) WriteStream(
 	return azp.streamReader(ctx, identity, source, options)
 }
 
-func (azp *Storer) write(
+func (azp *Storer) writeStream(
 	ctx context.Context,
 	identity string,
 	reader io.Reader,
 	leaseID string,
-	//tags map[string]string,
-	//metadata map[string]string,
 ) (*WriteResponse, error) {
 	logger.Sugar.Debugf("write %s", identity)
 	blockBlobClient, err := azp.containerClient.NewBlockBlobClient(identity)
@@ -164,9 +167,10 @@ func (azp *Storer) write(
 	if leaseID != "" {
 		blobAccessConditions.LeaseAccessConditions.LeaseID = &leaseID
 	}
-	// Writing tags and metadata should be possible using the fields in the options.
-	// Could not get it to work so am leaving commented out and will do explicit
-	// setTags and setMetadata calls instead in wrapping calls such as Write()
+
+	// Sream uploading does not support setting tags because the pages are
+	// uploaded in parallel and the tags can only be set once those pages block
+	// ids are commited. Use putBlob if you want this behaviour.
 	_, err = blockBlobClient.UploadStream(
 		ctx,
 		reader,
@@ -174,8 +178,6 @@ func (azp *Storer) write(
 			BufferSize:           chunkSize,
 			MaxBuffers:           3,
 			BlobAccessConditions: &blobAccessConditions,
-			//Metadata:             metadata,
-			//BlobTagsMap:          tags,
 		},
 	)
 	if err != nil {
@@ -291,7 +293,7 @@ func (azp *Storer) streamReader(
 		logger.Sugar.Debugf("Mime type is: %s", mimeType)
 
 		// prepare blob
-		resp, err = azp.write(ctx, identity, uploadData, options.leaseID)
+		resp, err = azp.writeStream(ctx, identity, uploadData, options.leaseID)
 		if err != nil {
 			return nil, err
 		}
