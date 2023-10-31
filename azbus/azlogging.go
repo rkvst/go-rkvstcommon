@@ -11,7 +11,7 @@ import (
 func EnableAzureLogging(log Logger) {
 	log.Debugf("Enabling Azure Logging")
 	azlog.SetListener(func(event azlog.Event, s string) {
-		log.Infof("[%s] %s", event, s)
+		log.Debugf("[%s] %s", event, s)
 	})
 
 	azlog.SetEvents(
