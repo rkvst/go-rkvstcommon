@@ -3,10 +3,10 @@
 package mocks
 
 import (
-	context "context"
-
 	azservicebus "github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	azbus "github.com/datatrails/go-datatrails-common/azbus"
+
+	context "context"
 
 	mock "github.com/stretchr/testify/mock"
 )

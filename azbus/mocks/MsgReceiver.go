@@ -3,10 +3,10 @@
 package mocks
 
 import (
-	context "context"
-
 	azservicebus "github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	azbus "github.com/datatrails/go-datatrails-common/azbus"
+
+	context "context"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -229,6 +229,47 @@ func (_c *MsgReceiver_GetAZClient_Call) RunAndReturn(run func() azbus.AZClient) 
 	return _c
 }
 
+// Listen provides a mock function with given fields:
+func (_m *MsgReceiver) Listen() error {
+	ret := _m.Called()
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MsgReceiver_Listen_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Listen'
+type MsgReceiver_Listen_Call struct {
+	*mock.Call
+}
+
+// Listen is a helper method to define mock.On call
+func (_e *MsgReceiver_Expecter) Listen() *MsgReceiver_Listen_Call {
+	return &MsgReceiver_Listen_Call{Call: _e.mock.On("Listen")}
+}
+
+func (_c *MsgReceiver_Listen_Call) Run(run func()) *MsgReceiver_Listen_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MsgReceiver_Listen_Call) Return(_a0 error) *MsgReceiver_Listen_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MsgReceiver_Listen_Call) RunAndReturn(run func() error) *MsgReceiver_Listen_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Open provides a mock function with given fields:
 func (_m *MsgReceiver) Open() error {
 	ret := _m.Called()
@@ -352,6 +393,48 @@ func (_c *MsgReceiver_Reschedule_Call) Return(_a0 error) *MsgReceiver_Reschedule
 }
 
 func (_c *MsgReceiver_Reschedule_Call) RunAndReturn(run func(context.Context, error, *azservicebus.ReceivedMessage) error) *MsgReceiver_Reschedule_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// Shutdown provides a mock function with given fields: _a0
+func (_m *MsgReceiver) Shutdown(_a0 context.Context) error {
+	ret := _m.Called(_a0)
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
+		r0 = rf(_a0)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MsgReceiver_Shutdown_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Shutdown'
+type MsgReceiver_Shutdown_Call struct {
+	*mock.Call
+}
+
+// Shutdown is a helper method to define mock.On call
+//   - _a0 context.Context
+func (_e *MsgReceiver_Expecter) Shutdown(_a0 interface{}) *MsgReceiver_Shutdown_Call {
+	return &MsgReceiver_Shutdown_Call{Call: _e.mock.On("Shutdown", _a0)}
+}
+
+func (_c *MsgReceiver_Shutdown_Call) Run(run func(_a0 context.Context)) *MsgReceiver_Shutdown_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context))
+	})
+	return _c
+}
+
+func (_c *MsgReceiver_Shutdown_Call) Return(_a0 error) *MsgReceiver_Shutdown_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MsgReceiver_Shutdown_Call) RunAndReturn(run func(context.Context) error) *MsgReceiver_Shutdown_Call {
 	_c.Call.Return(run)
 	return _c
 }

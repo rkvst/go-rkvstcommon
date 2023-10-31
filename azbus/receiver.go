@@ -7,9 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
-	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 var (
@@ -19,8 +17,16 @@ var (
 // so we dont have to import the azure repo everywhere
 type ReceivedMessage = azservicebus.ReceivedMessage
 
+// Handler - old style handler that assumes the handler has access to the receiver.
+// XXXX: this is DEPRECATED in favour of the parallelised PHandler.
 type Handler interface {
 	Handle(context.Context, *ReceivedMessage) error
+}
+
+// PHandler - handler used in parallelised receiver. This Handler will eventually supercede
+// the Handler interface above.
+type PHandler interface {
+	Handle(context.Context, *ReceivedMessage) (Disposition, context.Context, error, *ReceivedMessage)
 }
 
 const (
@@ -101,14 +107,23 @@ type Receiver struct {
 	mtx      sync.Mutex
 	receiver *azservicebus.Receiver
 	options  *azservicebus.ReceiverOptions
-	handler  Handler
+	handler  Handler    // for ReceiveMessages
+	handlers []PHandler // for ReceiveMessagesInParallel
 }
 
 type ReceiverOption func(*Receiver)
 
+// With Handler - deprecated use of single handler
 func WithHandler(h Handler) ReceiverOption {
 	return func(r *Receiver) {
 		r.handler = h
+	}
+}
+
+// WithHandlers - e the new parallelised handler
+func WithHandlers(h ...PHandler) ReceiverOption {
+	return func(r *Receiver) {
+		r.handlers = append(r.handlers, h...)
 	}
 }
 
@@ -138,6 +153,7 @@ func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiv
 		Cfg:      cfg,
 		azClient: NewAZClient(cfg.ConnectionString),
 		options:  options,
+		handlers: []PHandler{},
 	}
 	r.log = log.WithIndex("receiver", r.String())
 	for _, opt := range opts {
@@ -199,10 +215,38 @@ func (r *Receiver) elapsed(ctx context.Context, count int, total int, maxDuratio
 	return err
 }
 
-// RenewMessageLock renews the given messages peek lock, so it doesn't lose the lock and get re-added to the message queue.
+// elapsed emits 2 log messages detailing how long processing took. Additionally executes suitable disposition of message.
+func (r *Receiver) elapsedParallel(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler PHandler) {
+	now := time.Now()
+
+	log := r.log.FromContext(ctx)
+	defer log.Close()
+
+	log.Debugf("Processing message %d", count)
+	disp, ctx, err, msg := r.handleParallelReceivedMessageWithTracingContext(ctx, msg, handler)
+	_ = r.Dispose(ctx, disp, err, msg)
+
+	duration := time.Since(now)
+	log.Debugf("Processing message %d took %s", count, duration)
+
+	// This is safe because maxDuration is only defined if RenewMessageLock is false.
+	if !r.Cfg.RenewMessageLock && duration >= maxDuration {
+		log.Infof("WARNING: processing msg %d duration %v took more than %v seconds", count, duration, maxDuration)
+		log.Infof("WARNING: please either enable SERVICEBUS_RENEW_LOCK or reduce SERVICEBUS_INCOMING_MESSAGES")
+		log.Infof("WARNING: both can be found in the helm chart for each service.")
+	}
+	if err != nil {
+		if errors.Is(err, ErrPeekLockTimeout) {
+			log.Infof("WARNING: processing msg %d duration %s returned error: %v", count, duration, err)
+			log.Infof("WARNING: please enable SERVICEBUS_RENEW_LOCK which can be found in the helm chart")
+		}
+	}
+}
+
+// renewMessageLock renews the given messages peek lock, so it doesn't lose the lock and get re-added to the message queue.
 //
 // Stop the message lock renewal by cancelling the passed in context
-func (r *Receiver) receiverRenewMessageLock(ctx context.Context, count int, msg *ReceivedMessage) {
+func (r *Receiver) renewMessageLock(ctx context.Context, count int, msg *ReceivedMessage) {
 	var err error
 
 	ticker := time.NewTicker(r.Cfg.RenewMessageTime)
@@ -231,6 +275,8 @@ func (r *Receiver) receiverRenewMessageLock(ctx context.Context, count int, msg 
 	}
 }
 
+// ReceiveMessages - deprecated method that recives a message using one handler.
+// XXXX: will be replaced in entirety bu receiveMessagesInParallel.
 func (r *Receiver) ReceiveMessages(handler Handler) error {
 
 	ctx := context.Background()
@@ -268,7 +314,7 @@ func (r *Receiver) ReceiveMessages(handler Handler) error {
 				ectx, ecancel = context.WithCancel(fctx)
 				defer ecancel()
 				for i := 0; i < total; i++ {
-					go r.receiverRenewMessageLock(ectx, i+1, messages[i])
+					go r.renewMessageLock(ectx, i+1, messages[i])
 				}
 			}
 			// See the setTimeout() function for caveats around setting a timeout based on the
@@ -302,12 +348,86 @@ func (r *Receiver) ReceiveMessages(handler Handler) error {
 
 }
 
+func (r *Receiver) receiveMessagesInParallel() error {
+
+	if len(r.handlers) != r.Cfg.NumberOfReceivedMessages {
+		return fmt.Errorf("%s: Number of Handlers %d is not equal to %d", r, len(r.handlers), r.Cfg.NumberOfReceivedMessages)
+	}
+
+	err := r.Open()
+	if err != nil {
+		azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
+		r.log.Infof("%s", azerr)
+		return azerr
+	}
+	r.log.Debugf(
+		"NumberOfReceivedMessages %d, RenewMessageLock: %v",
+		r.Cfg.NumberOfReceivedMessages,
+		r.Cfg.RenewMessageLock,
+	)
+
+	// Start all the workers
+	msgs := make(chan *ReceivedMessage, r.Cfg.NumberOfReceivedMessages)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var wg sync.WaitGroup
+	for i := 0; i < r.Cfg.NumberOfReceivedMessages; i++ {
+		go func(rctx context.Context, ii int, rr *Receiver) {
+			rr.log.Debugf("Start worker %d", ii)
+			for {
+				select {
+				case <-rctx.Done():
+					rr.log.Debugf("Stop worker %d", ii)
+					return
+				case msg := <-msgs:
+					var renewCtx context.Context
+					var renewCancel context.CancelFunc
+					var maxDuration time.Duration
+					if rr.Cfg.RenewMessageLock {
+						renewCtx, renewCancel = context.WithCancel(rctx)
+						go rr.renewMessageLock(renewCtx, ii+1, msg)
+					} else {
+						// we need a timeout if RenewMessageLock is disabled
+						renewCtx, renewCancel, maxDuration = rr.setTimeout(rctx, rr.log, msg)
+					}
+					rr.elapsedParallel(renewCtx, ii+1, maxDuration, msg, rr.handlers[ii])
+					renewCancel()
+					wg.Done()
+				}
+			}
+		}(ctx, i, r)
+	}
+
+	for {
+		var err error
+		var messages []*ReceivedMessage
+		messages, err = r.receiver.ReceiveMessages(ctx, r.Cfg.NumberOfReceivedMessages, nil)
+		if err != nil {
+			azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
+			r.log.Infof("%s", azerr)
+			return azerr
+		}
+		total := len(messages)
+		r.log.Debugf("total messages %d", total)
+
+		for i := 0; i < total; i++ {
+			wg.Add(1)
+			msgs <- messages[i]
+		}
+		wg.Wait()
+		r.log.Debugf("Processed %d messages", total)
+	}
+}
+
 // The following 2 methods satisfy the startup.Listener interface.
 func (r *Receiver) Listen() error {
-	if r.handler == nil {
-		return ErrNoHandler
+	if r.handler != nil {
+		return r.ReceiveMessages(r.handler)
 	}
-	return r.ReceiveMessages(r.handler)
+	if r.handlers != nil && len(r.handlers) > 0 {
+		return r.receiveMessagesInParallel()
+	}
+	return ErrNoHandler
 }
 
 func (r *Receiver) Shutdown(ctx context.Context) error {
@@ -357,79 +477,4 @@ func (r *Receiver) Close(ctx context.Context) {
 			r.receiver = nil
 		}
 	}
-}
-
-// NB: ALL disposition methods return nil so they can be used in return statements
-
-// Abandon abandons message. This function is not used but is present for consistency.
-func (r *Receiver) Abandon(ctx context.Context, err error, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, ctx := tracing.StartSpanFromContext(ctx, "Message.Abandon")
-	defer span.Finish()
-	log.Infof("Abandon Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
-	err1 := r.receiver.AbandonMessage(ctx, msg, nil)
-	if err1 != nil {
-		azerr := fmt.Errorf("Abandon Message failure: %w", NewAzbusError(err1))
-		log.Infof("%s", azerr)
-	}
-	return nil
-}
-
-// Reschedule handles when a message should be deferred at a later time. There are a
-// number of ways of doing this but it turns out that simply not doing anything causes
-// azservicebus to resubmit the message 1 minute later. We keep the function signature with
-// unused arguments for consistency and in case we need to implement more sophisticated
-// algorithms in future.
-func (r *Receiver) Reschedule(ctx context.Context, err error, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, _ := tracing.StartSpanFromContext(ctx, "Message.Reschedule")
-	defer span.Finish()
-	log.Infof("Reschedule Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
-	return nil
-}
-
-// DeadLetter explicitly deadletters a message.
-func (r *Receiver) DeadLetter(ctx context.Context, err error, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, ctx := tracing.StartSpanFromContext(ctx, "Message.DeadLetter")
-	defer span.Finish()
-	log.Infof("DeadLetter Message: %v", err)
-	options := azservicebus.DeadLetterOptions{
-		Reason: to.Ptr(err.Error()),
-	}
-	err1 := r.receiver.DeadLetterMessage(ctx, msg, &options)
-	if err1 != nil {
-		azerr := fmt.Errorf("DeadLetter Message failure: %w", NewAzbusError(err1))
-		log.Infof("%s", azerr)
-	}
-	return nil
-}
-
-func (r *Receiver) Complete(ctx context.Context, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, _ := tracing.StartSpanFromContext(ctx, "Message.Complete")
-	defer span.Finish()
-
-	log.Infof("Complete Message")
-
-	err := r.receiver.CompleteMessage(ctx, msg, nil)
-	if err != nil {
-		// If the completion fails then the message will get rescheduled, but it's effect will
-		// have been made, so we could get duplication issues.
-		azerr := fmt.Errorf("Complete: failed to settle message: %w", NewAzbusError(err))
-		log.Infof("%s", azerr)
-	}
-	return nil
 }
