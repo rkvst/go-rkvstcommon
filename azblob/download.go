@@ -7,13 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/textproto"
-	"strconv"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 
 	"github.com/rkvst/go-rkvstcommon/logger"
-	"github.com/rkvst/go-rkvstcommon/scannedstatus"
 )
 
 const (
@@ -39,6 +36,7 @@ func (azp *Storer) getTags(
 		logger.Sugar.Debugf("getTags BlockBlob Client %s error: %v", identity, err)
 		return nil, ErrorFromError(err)
 	}
+
 	resp, err := blobClient.GetTags(ctx, nil)
 	if err != nil {
 		logger.Sugar.Debugf("getTags BlockBlob URL %s error: %v", identity, err)
@@ -74,20 +72,6 @@ func (azp *Storer) getMetadata(
 	return resp.Metadata, nil
 }
 
-type ReaderResponse struct {
-	Reader            io.ReadCloser
-	HashValue         string
-	MimeType          string
-	Size              int64
-	Tags              map[string]string
-	TimestampAccepted string
-	ScannedStatus     string
-	ScannedBadReason  string
-	ScannedTimestamp  string
-
-	BlobClient *azStorageBlob.BlobClient
-}
-
 // Reader creates a reader.
 func (azp *Storer) Reader(
 	ctx context.Context,
@@ -105,13 +89,9 @@ func (azp *Storer) Reader(
 	logger.Sugar.Debugf("Reader BlockBlob URL %s", identity)
 
 	resp := &ReaderResponse{}
-	var blobAccessConditions azStorageBlob.BlobAccessConditions
-	if options.leaseID != "" {
-		blobAccessConditions = azStorageBlob.BlobAccessConditions{
-			LeaseAccessConditions: &azStorageBlob.LeaseAccessConditions{
-				LeaseID: &options.leaseID,
-			},
-		}
+	blobAccessConditions, err := storerOptionConditions(options)
+	if err != nil {
+		return nil, err
 	}
 
 	if len(options.tags) > 0 || options.getTags {
@@ -127,6 +107,9 @@ func (azp *Storer) Reader(
 		resp.Tags = tags
 	}
 
+	// XXX: TODO this should be done with access conditions. this is racy as it
+	// stands. azure guarantees the tags for a blob read after write is
+	// consistent. we can't take advantage of that while this remains racy.
 	for k, requiredValue := range options.tags {
 		blobValue, ok := resp.Tags[k]
 		if !ok {
@@ -139,7 +122,9 @@ func (azp *Storer) Reader(
 		}
 	}
 
-	if options.getMetadata == OnlyMetadata || options.getMetadata == BothMetadataAndBlob {
+	// If we are *only* getting metadata, issue a distinct request. Otherwise we
+	// get it from the download response.
+	if options.getMetadata == OnlyMetadata {
 		metaData, metadataErr := azp.getMetadata(
 			ctx,
 			identity,
@@ -148,19 +133,9 @@ func (azp *Storer) Reader(
 			logger.Sugar.Infof("cannot get metadata: %v", metadataErr)
 			return nil, metadataErr
 		}
-		logger.Sugar.Debugf("blob metadata %v", metaData)
-		size, parseErr := strconv.ParseInt(metaData[textproto.CanonicalMIMEHeaderKey(SizeKey)], 10, 64)
-		if parseErr != nil {
-			logger.Sugar.Infof("cannot get size value: %v", parseErr)
-			return nil, parseErr
+		if parseErr := readerResponseMetadata(resp, metaData); parseErr != nil {
+			return nil, err
 		}
-		resp.Size = size
-		resp.HashValue = metaData[textproto.CanonicalMIMEHeaderKey(HashKey)]
-		resp.MimeType = metaData[textproto.CanonicalMIMEHeaderKey(MimeKey)]
-		resp.TimestampAccepted = metaData[textproto.CanonicalMIMEHeaderKey(TimeKey)]
-		resp.ScannedStatus = scannedstatus.FromString(metaData[textproto.CanonicalMIMEHeaderKey(scannedstatus.Key)]).String()
-		resp.ScannedBadReason = metaData[textproto.CanonicalMIMEHeaderKey(scannedstatus.BadReason)]
-		resp.ScannedTimestamp = metaData[textproto.CanonicalMIMEHeaderKey(scannedstatus.Timestamp)]
 	}
 
 	if options.getMetadata == OnlyMetadata {
@@ -180,12 +155,27 @@ func (azp *Storer) Reader(
 			Count:                &countToEnd,
 		},
 	)
+
 	if err != nil && err == io.EOF { // nolint
 		logger.Sugar.Infof("cannot get blob body: %v", err)
 		return nil, ErrorFromError(err)
 	}
-	resp.Reader = get.Body(nil)
-	return resp, nil
+
+	normaliseReaderResponseErr(err, resp)
+	if err == nil {
+		// We *always* copy the metadata into the response
+		downloadReaderResponse(get, resp)
+
+		// for backwards compat, we only process the metadata on request
+		if options.getMetadata == BothMetadataAndBlob {
+			readerResponseMetadata(resp, resp.Metadata)
+		}
+	}
+
+	if get.RawResponse != nil {
+		resp.Reader = get.Body(nil)
+	}
+	return resp, err
 }
 
 func (r *ReaderResponse) DownloadToWriter(w io.Writer) error {

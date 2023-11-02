@@ -28,12 +28,12 @@ func (azp *Storer) Put(
 		opt(options)
 	}
 
-	_, err = azp.putBlob(
-		ctx, identity, source, options.leaseID, options.tags, options.metadata)
+	wr, err := azp.putBlob(
+		ctx, identity, source, options)
 	if err != nil {
 		return nil, err
 	}
-	return &WriteResponse{}, nil
+	return wr, nil
 }
 
 // putBlob creates or replaces a blob. If the blob exists, any existing metdata
@@ -44,9 +44,7 @@ func (azp *Storer) putBlob(
 	ctx context.Context,
 	identity string,
 	body io.ReadSeekCloser,
-	leaseID string,
-	tags map[string]string,
-	metadata map[string]string,
+	options *StorerOptions,
 ) (*WriteResponse, error) {
 	logger.Sugar.Debugf("write %s", identity)
 
@@ -55,32 +53,29 @@ func (azp *Storer) putBlob(
 		return nil, fmt.Errorf("bad body for %s: %v", identity, ErrMustSupportSeek0)
 	}
 
+	blobAccessConditions, err := storerOptionConditions(options)
+	if err != nil {
+		return nil, err
+	}
+
 	blockBlobClient, err := azp.containerClient.NewBlockBlobClient(identity)
 	if err != nil {
 		logger.Sugar.Infof("Cannot get block blob client blob: %v", err)
 		return nil, ErrorFromError(err)
 	}
-	blobAccessConditions := azStorageBlob.BlobAccessConditions{
-		LeaseAccessConditions:    &azStorageBlob.LeaseAccessConditions{},
-		ModifiedAccessConditions: &azStorageBlob.ModifiedAccessConditions{},
-	}
-	if leaseID != "" {
-		blobAccessConditions.LeaseAccessConditions.LeaseID = &leaseID
-	}
 
-	_, err = blockBlobClient.Upload(
+	r, err := blockBlobClient.Upload(
 		ctx,
 		body,
 		&azStorageBlob.BlockBlobUploadOptions{
 			BlobAccessConditions: &blobAccessConditions,
-			Metadata:             metadata,
-			TagsMap:              tags,
+			Metadata:             options.metadata,
+			TagsMap:              options.tags,
 		},
 	)
 	if err != nil {
 		logger.Sugar.Infof("Cannot upload blob: %v", err)
 		return nil, ErrorFromError(err)
-
 	}
-	return &WriteResponse{}, nil
+	return uploadWriteResponse(r), nil
 }

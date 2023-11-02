@@ -25,7 +25,7 @@ const (
 
 	azuriteWellKnownKey             string = "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
 	azuriteWellKnownAccount         string = "devstoreaccount1"
-	azuriteWellKnownBlobEndpointURL string = "http://127.0.0.1:10000/"
+	azuriteWellKnownBlobEndpointURL string = "http://127.0.0.1:10000/devstoreaccount1/"
 	azuriteResourceGroup            string = "azurite-emulator"
 	azuriteSubscription             string = "azurite-emulator"
 )
@@ -42,7 +42,7 @@ func NewDevConfigFromEnv() DevConfig {
 	return DevConfig{
 		AccountName: devVarWithDefault(azureStorageAccountVar, azuriteWellKnownAccount),
 		Key:         devVarWithDefault(azureStorageKeyVar, azuriteWellKnownKey),
-		URL:         devVarWithDefault(azuriteBlobEndpointURLVar, azuriteWellKnownKey),
+		URL:         devVarWithDefault(azuriteBlobEndpointURLVar, azuriteWellKnownBlobEndpointURL),
 	}
 }
 

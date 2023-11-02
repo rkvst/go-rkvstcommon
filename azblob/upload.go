@@ -81,13 +81,6 @@ func (azp *Storer) setTags(
 	return nil
 }
 
-type WriteResponse struct {
-	HashValue         string
-	MimeType          string
-	Size              int64
-	TimestampAccepted string
-}
-
 // Write writes to blob from io.Reader.
 func (azp *Storer) Write(
 	ctx context.Context,
@@ -106,7 +99,11 @@ func (azp *Storer) Write(
 		opt(options)
 	}
 
-	_, err = azp.writeStream(ctx, identity, source, options.leaseID)
+	if options.etagCondition != EtagNotUsed {
+		return nil, errors.New("etag conditions are not supported on streaming uploads")
+	}
+
+	wr, err := azp.writeStream(ctx, identity, source, options.leaseID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +121,7 @@ func (azp *Storer) Write(
 			return nil, err
 		}
 	}
-	return &WriteResponse{}, nil
+	return wr, nil
 }
 
 // Write writes to blob from http request.
@@ -171,7 +168,7 @@ func (azp *Storer) writeStream(
 	// Sream uploading does not support setting tags because the pages are
 	// uploaded in parallel and the tags can only be set once those pages block
 	// ids are commited. Use putBlob if you want this behaviour.
-	_, err = blockBlobClient.UploadStream(
+	r, err := blockBlobClient.UploadStream(
 		ctx,
 		reader,
 		azStorageBlob.UploadStreamOptions{
@@ -185,7 +182,7 @@ func (azp *Storer) writeStream(
 		return nil, ErrorFromError(err)
 
 	}
-	return &WriteResponse{}, nil
+	return uploadStreamWriteResponse(r), nil
 }
 
 func (azp *Storer) streamReader(

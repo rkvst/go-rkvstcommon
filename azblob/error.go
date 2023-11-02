@@ -59,3 +59,20 @@ func (e *Error) StatusCode() int {
 	logger.Sugar.Debugf("Return InternalServerError")
 	return http.StatusInternalServerError
 }
+
+// StorageErrorCode returns the underlying azure storage ErrorCode string eg "BlobNotFound"
+func (e *Error) StorageErrorCode() string {
+	var terr *azStorageBlob.StorageError
+	if errors.As(e.err, &terr) {
+		if terr.ErrorCode != "" {
+			return string(terr.ErrorCode)
+		}
+	}
+	return ""
+}
+
+// IsConditionNotMet returns true if the err is the storage code indicating that
+// a If- header predicate (eg ETag) was not met
+func (e *Error) IsConditionNotMet() bool {
+	return e.StorageErrorCode() == string(azStorageBlob.StorageErrorCodeConditionNotMet)
+}

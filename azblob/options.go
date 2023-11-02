@@ -8,21 +8,60 @@ const (
 	BothMetadataAndBlob
 )
 
+type ETagCondition int
+
+const (
+	EtagNotUsed ETagCondition = iota
+	ETagMatch
+	ETagNoneMatch
+	TagsWhere
+)
+
 func (g GetMetadata) String() string {
 	return [...]string{"No metadata handling", "Only metadata", "metadata and blob"}[g]
 }
 
 // StorerOptions - optional args for specifying optional behaviour
 type StorerOptions struct {
-	leaseID     string
-	metadata    map[string]string
-	tags        map[string]string
-	getMetadata GetMetadata
-	getTags     bool
-	sizeLimit   int64
+	leaseID       string
+	metadata      map[string]string
+	tags          map[string]string
+	getMetadata   GetMetadata
+	getTags       bool
+	sizeLimit     int64
+	etag          string
+	etagCondition ETagCondition // ETagMatch || ETagNoneMatch
 }
 
 type Option func(*StorerOptions)
+
+// WithEtagMatch succeed if the blob etag matches the provied value
+// Typically used to make optimistic concurrency updates safe.
+func WithEtagMatch(etag string) Option {
+	return func(a *StorerOptions) {
+		a.etag = etag
+		// Only one condition at a time is possible. If multiple are requested, the last one wins
+		a.etagCondition = ETagMatch
+	}
+}
+
+// WithEtagNoneMatch succeed if the blob etag does *not* match the supplied value
+func WithEtagNoneMatch(etag string) Option {
+	return func(a *StorerOptions) {
+		a.etag = etag
+		// Only one condition at a time is possible. If multiple are requested, the last one wins
+		a.etagCondition = ETagNoneMatch
+	}
+}
+
+// WithWhereTags succeed if the where clause matches the blob tags)
+func WithWhereTags(whereTags string) Option {
+	return func(a *StorerOptions) {
+		a.etag = whereTags
+		// Only one condition at a time is possible. If multiple are requested, the last one wins
+		a.etagCondition = TagsWhere
+	}
+}
 
 // Specifying an option that is no used is silently ignored. i.e. Specifying
 // WithMetadata() in a call to Reader() will not raise an error.
