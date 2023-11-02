@@ -5,11 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"os/signal"
+	"reflect"
 	"strings"
 	"syscall"
 	"time"
 
 	"golang.org/x/sync/errgroup"
+)
+
+var (
+	ErrNilListener      = errors.New("Nil Listener")
+	ErrNilListenerValue = errors.New("Nil Listener value")
 )
 
 // based on gist found at https://gist.github.com/pteich/c0bb58b0b7c8af7cc6a689dd0d3d26ef?permalink_comment_id=4053701
@@ -30,19 +36,22 @@ type Listeners struct {
 
 type ListenersOption func(*Listeners)
 
-func WithListener(h Listener) ListenersOption {
+// WithListeners add multiple listeners. Nil listeners will cause
+// an error to be returned.
+func WithListeners(listeners ...Listener) ListenersOption {
 	return func(l *Listeners) {
-		if h != nil {
-			l.listeners = append(l.listeners, h)
-		}
+		l.listeners = append(l.listeners, listeners...)
 	}
 }
 
-func WithListeners(h []Listener) ListenersOption {
+// WithOptionalListeners add multiple listeners. Nil listeners will
+// be ignored.
+func WithOptionalListeners(listeners ...Listener) ListenersOption {
 	return func(l *Listeners) {
-		for i := 0; i < len(h); i++ {
-			if h[i] != nil {
-				l.listeners = append(l.listeners, h[i])
+		for i := 0; i < len(listeners); i++ {
+			listener := listeners[i]
+			if listener != nil && !reflect.ValueOf(listener).IsNil() {
+				l.listeners = append(l.listeners, listener)
 			}
 		}
 	}
@@ -68,8 +77,15 @@ func (l *Listeners) Listen() error {
 
 	g, errCtx := errgroup.WithContext(ctx)
 
-	for _, h := range l.listeners {
-		h := h
+	for i := range l.listeners {
+		h := l.listeners[i]
+		if h == nil {
+			return ErrNilListener
+		}
+		if reflect.ValueOf(h).IsNil() {
+			return ErrNilListenerValue
+		}
+		l.log.Debugf("Start %d %s", i, h)
 		g.Go(func() error {
 			err := h.Listen()
 			if err != nil {

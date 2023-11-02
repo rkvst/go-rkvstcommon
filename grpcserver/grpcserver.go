@@ -28,13 +28,15 @@ type RegisterServer func(*grpcServer)
 func defaultRegisterServer(g *grpcServer) {}
 
 type GRPCServer struct {
-	name         string
-	log          Logger
-	listenStr    string
-	health       *grpchealth.HealthCheckingService
-	interceptors []grpcUnaryServerInterceptor
-	register     RegisterServer
-	server       *grpcServer
+	name          string
+	log           Logger
+	listenStr     string
+	health        bool
+	healthService *grpchealth.HealthCheckingService
+	interceptors  []grpcUnaryServerInterceptor
+	register      RegisterServer
+	server        *grpcServer
+	reflection    bool
 }
 
 type GRPCServerOption func(*GRPCServer)
@@ -57,6 +59,18 @@ func WithRegisterServer(r RegisterServer) GRPCServerOption {
 	}
 }
 
+func WithoutHealth() GRPCServerOption {
+	return func(g *GRPCServer) {
+		g.health = false
+	}
+}
+
+func WithReflection(r bool) GRPCServerOption {
+	return func(g *GRPCServer) {
+		g.reflection = r
+	}
+}
+
 func tracingFilter(ctx context.Context, fullMethodName string) bool {
 	if fullMethodName == grpcHealth.Health_Check_FullMethodName {
 		return false
@@ -69,17 +83,15 @@ func tracingFilter(ctx context.Context, fullMethodName string) bool {
 func New(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
 	listenStr := fmt.Sprintf(":%s", env.GetOrFatal("PORT"))
 
-	health := grpchealth.New(log)
-
 	g := GRPCServer{
 		name:      strings.ToLower(name),
 		listenStr: listenStr,
-		health:    &health,
 		register:  defaultRegisterServer,
 		interceptors: []grpc.UnaryServerInterceptor{
 			grpc_otrace.UnaryServerInterceptor(grpc_otrace.WithFilterFunc(tracingFilter)),
 			grpc_validator.UnaryServerInterceptor(),
 		},
+		health: true,
 	}
 	for _, opt := range opts {
 		opt(&g)
@@ -93,8 +105,16 @@ func New(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
 	// RegisterAccessPoliciesServer(s grpc.ServiceRegistrar, srv AccessPoliciesServer)
 	//accessPolicyV1API.RegisterAccessPoliciesServer(server, s)
 	g.register(server)
-	grpcHealth.RegisterHealthServer(server, &health)
-	reflection.Register(server)
+
+	if g.health {
+		healthService := grpchealth.New(log)
+		g.healthService = &healthService
+		grpcHealth.RegisterHealthServer(server, g.healthService)
+	}
+
+	if g.reflection {
+		reflection.Register(server)
+	}
 
 	g.server = server
 	g.log = log.WithIndex("grpcserver", g.String())
@@ -112,7 +132,9 @@ func (g *GRPCServer) Listen() error {
 		return fmt.Errorf("failed to listen %s: %w", g, err)
 	}
 
-	g.health.Ready() // readiness
+	if g.healthService != nil {
+		g.healthService.Ready() // readiness
+	}
 
 	g.log.Infof("Listen")
 	err = g.server.Serve(listen)
@@ -124,8 +146,10 @@ func (g *GRPCServer) Listen() error {
 
 func (g *GRPCServer) Shutdown(_ context.Context) error {
 	g.log.Infof("Shutdown")
-	g.health.NotReady() // readiness
-	g.health.Dead()     // liveness
+	if g.healthService != nil {
+		g.healthService.NotReady() // readiness
+		g.healthService.Dead()     // liveness
+	}
 	g.server.GracefulStop()
 	return nil
 }

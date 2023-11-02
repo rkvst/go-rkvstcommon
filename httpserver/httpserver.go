@@ -5,8 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 	"time"
+)
+
+var (
+	ErrNilHandler            = errors.New("Nil Handler")
+	ErrNilHandlerValue       = errors.New("Nil Handler value")
+	ErrHandlerFuncReturnsNil = errors.New("Handler function returns nil")
 )
 
 type HandleChainFunc func(http.Handler) http.Handler
@@ -18,47 +25,46 @@ type Server struct {
 	log      Logger
 	name     string
 	server   http.Server
+	handler  http.Handler
 	handlers []HandleChainFunc
 }
 
 type ServerOption func(*Server)
 
-// WithHandler adds a handler on the http endpoint.
-func WithHandler(h HandleChainFunc) ServerOption {
+// WithHandlers adds a handler on the http endpoint. If the handler is nil
+// then an error will occur when executing the Listen() method.
+func WithHandlers(handlers ...HandleChainFunc) ServerOption {
 	return func(s *Server) {
-		if h != nil {
-			s.handlers = append(s.handlers, h)
+		s.handlers = append(s.handlers, handlers...)
+	}
+}
+
+// WithOptionalHandlers adds a handler on the http endpoint. If the handler is nil
+// it is ignored.
+func WithOptionalHandlers(handlers ...HandleChainFunc) ServerOption {
+	return func(s *Server) {
+		for i := 0; i < len(handlers); i++ {
+			handler := handlers[i]
+			if handler != nil && !reflect.ValueOf(handler).IsNil() {
+				s.handlers = append(s.handlers, handler)
+			}
 		}
 	}
 }
 
-// WithHandlers adds a handler on the http endpoint.
-func WithHandlers(h []HandleChainFunc) ServerOption {
-	return func(s *Server) {
-		s.handlers = append(s.handlers, h...)
-	}
-}
-
+// New creates a new httpserver. ChainHandlers that return nil are ignored.
 func New(log Logger, name string, port string, h http.Handler, opts ...ServerOption) *Server {
 	s := Server{
 		server: http.Server{
 			Addr: ":" + port,
 		},
-		name: strings.ToLower(name),
+		handler: h,
+		name:    strings.ToLower(name),
 	}
 	s.log = log.WithIndex("httpserver", s.String())
 	for _, opt := range opts {
 		opt(&s)
 	}
-
-	s.log.Debugf("Initialise handlers %v", h)
-	for _, handler := range s.handlers {
-		if handler != nil {
-			h = handler(h)
-		}
-	}
-	s.server.Handler = h
-
 	// It is preferable to return a copy rather than a reference. Unfortunately http.Server has an
 	// internal mutex and this cannot or should not be copied so we will return a reference instead.
 	return &s
@@ -71,6 +77,24 @@ func (s *Server) String() string {
 
 func (s *Server) Listen() error {
 	s.log.Infof("Listen")
+	h := s.handler
+	for i, handler := range s.handlers {
+		s.log.Debugf("%d: h %v handler %v", i, handler)
+		if handler == nil {
+			return ErrNilHandler
+		}
+		if reflect.ValueOf(handler).IsNil() {
+			return ErrNilHandlerValue
+		}
+		h1 := handler(h)
+		if h1 == nil {
+			return ErrHandlerFuncReturnsNil
+		}
+		h = h1
+	}
+	s.server.Handler = h
+
+	// this is a blocking operation
 	err := s.server.ListenAndServe()
 	if err != nil {
 		return fmt.Errorf("%s server terminated: %v", s, err)

@@ -2,8 +2,10 @@ package restproxyserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	env "github.com/datatrails/go-datatrails-common/environment"
@@ -17,6 +19,11 @@ import (
 const (
 	defaultGRPCHost = "localhost"
 	MIMEWildcard    = runtime.MIMEWildcard
+)
+
+var (
+	ErrNilRegisterer      = errors.New("Nil Registerer")
+	ErrNilRegistererValue = errors.New("Nil Registerer value")
 )
 
 type Marshaler = runtime.Marshaler
@@ -36,7 +43,7 @@ type filePath struct {
 	fileHandler func(http.ResponseWriter, *http.Request, map[string]string)
 }
 
-// RESTProxyServer represents the grpc-gateway rest openapiv2 serve endpoint.
+// RESTProxyServer represents the grpc-gateway rest serve endpoint.
 type RESTProxyServer struct {
 	name        string
 	port        string
@@ -48,6 +55,7 @@ type RESTProxyServer struct {
 	filePaths   []filePath
 	handlers    []HandleChainFunc
 	registers   []RegisterRESTProxyServer
+	mux         *runtime.ServeMux
 	server      *httpserver.Server
 }
 
@@ -67,25 +75,30 @@ func SetQueryParameterParser(p QueryParameterParser) RESTProxyServerOption {
 	}
 }
 
-// WithOutgoingHeaderMatcher matches header values on oupput.
 // WithIncomingHeaderMatcher adds an intercepror that matches header values.
 func WithIncomingHeaderMatcher(o HeaderMatcherFunc) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
-		g.options = append(g.options, runtime.WithIncomingHeaderMatcher(o))
+		if o != nil && !reflect.ValueOf(o).IsNil() {
+			g.options = append(g.options, runtime.WithIncomingHeaderMatcher(o))
+		}
 	}
 }
 
-// WithOutgoingHeaderMatcher matches header values on oupput.
+// WithOutgoingHeaderMatcher matches header values on output. Nil argument is ignored.
 func WithOutgoingHeaderMatcher(o HeaderMatcherFunc) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
-		g.options = append(g.options, runtime.WithOutgoingHeaderMatcher(o))
+		if o != nil && !reflect.ValueOf(o).IsNil() {
+			g.options = append(g.options, runtime.WithOutgoingHeaderMatcher(o))
+		}
 	}
 }
 
-// WithErrorHandler adds error handling in special cases - e.g on 402 or 429.
+// WithErrorHandler adds error handling in special cases - e.g on 402 or 429. Nil argument is ignored.
 func WithErrorHandler(o ErrorHandlerFunc) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
-		g.options = append(g.options, runtime.WithErrorHandler(o))
+		if o != nil && !reflect.ValueOf(o).IsNil() {
+			g.options = append(g.options, runtime.WithErrorHandler(o))
+		}
 	}
 }
 
@@ -96,18 +109,44 @@ func WithGRPCAddress(a string) RESTProxyServerOption {
 	}
 }
 
-// WithRegisterHandler adds another grpc-gateway handler
-func WithRegisterHandler(r RegisterRESTProxyServer) RESTProxyServerOption {
+// WithRegisterHandler adds another grpc-gateway handler. A nil value will emit an
+// error from the Listen() method.
+func WithRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
-		g.registers = append(g.registers, r)
+		g.registers = append(g.registers, registerers...)
 	}
 }
 
-// WithHTTPHandler adds a handler on the http endpoint.
-func WithHTTPHandler(h HandleChainFunc) RESTProxyServerOption {
+// WithOptionalRegisterHandler adds another grpc-gateway handler. A nil value will be
+// ignored.
+func WithOptionalRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
-		if h != nil {
-			g.handlers = append(g.handlers, h)
+		for i := 0; i < len(registerers); i++ {
+			registerer := registerers[i]
+			if registerer != nil && !reflect.ValueOf(registerer).IsNil() {
+				g.registers = append(g.registers, registerer)
+			}
+		}
+	}
+}
+
+// WithHTTPHandler adds a handler on the http endpoint. A nil value will
+// return an error on executiong Listen()
+func WithHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
+	return func(g *RESTProxyServer) {
+		g.handlers = append(g.handlers, handlers...)
+	}
+}
+
+// WithOptionalHTTPHandler adds a handler on the http endpoint. A nil value will
+// be ignored.
+func WithOptionalHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
+	return func(g *RESTProxyServer) {
+		for i := 0; i < len(handlers); i++ {
+			handler := handlers[i]
+			if handler != nil && !reflect.ValueOf(handler).IsNil() {
+				g.handlers = append(g.handlers, handler)
+			}
 		}
 	}
 }
@@ -143,7 +182,6 @@ func WithHandlePath(verb string, urlPath string, f func(http.ResponseWriter, *ht
 // New creates a new RESTProxyServer that is bound to a specific GRPC Gateway API. This object complies with
 // the standard Listener interface and can be managed by the startup.Listeners object.
 func New(log Logger, name string, port string, opts ...RESTProxyServerOption) RESTProxyServer {
-	var err error
 
 	g := RESTProxyServer{
 		name:        strings.ToLower(name),
@@ -164,27 +202,7 @@ func New(log Logger, name string, port string, opts ...RESTProxyServerOption) RE
 		g.grpcAddress = fmt.Sprintf("localhost:%s", port)
 	}
 
-	mux := runtime.NewServeMux(g.options...)
-	for _, p := range g.filePaths {
-		err = mux.HandlePath(p.verb, p.urlPath, p.fileHandler)
-		if err != nil {
-			g.log.Panicf("cannot handle path %s: %w", p.urlPath, err)
-		}
-	}
-
-	for _, register := range g.registers {
-		err = register(context.Background(), mux, g.grpcAddress, g.dialOptions)
-		if err != nil {
-			g.log.Panicf("register error: %w", err)
-		}
-	}
-	g.server = httpserver.New(
-		g.log,
-		fmt.Sprintf("proxy %s", g.name),
-		g.port,
-		mux,
-		httpserver.WithHandlers(g.handlers),
-	)
+	g.mux = runtime.NewServeMux(g.options...)
 	return g
 }
 
@@ -194,6 +212,35 @@ func (g *RESTProxyServer) String() string {
 }
 
 func (g *RESTProxyServer) Listen() error {
+
+	for _, p := range g.filePaths {
+		err := g.mux.HandlePath(p.verb, p.urlPath, p.fileHandler)
+		if err != nil {
+			return fmt.Errorf("cannot handle path %s: %w", p.urlPath, err)
+		}
+	}
+
+	for _, register := range g.registers {
+		if register == nil {
+			return ErrNilRegisterer
+		}
+		if reflect.ValueOf(register).IsNil() {
+			return ErrNilRegistererValue
+		}
+		err := register(context.Background(), g.mux, g.grpcAddress, g.dialOptions)
+		if err != nil {
+			return err
+		}
+	}
+	g.server = httpserver.New(
+		g.log,
+		fmt.Sprintf("proxy %s", g.name),
+		g.port,
+		g.mux,
+		httpserver.WithHandlers(g.handlers...),
+	)
+
+	g.log.Debugf("server %v", g.server)
 	g.log.Infof("Listen")
 	return g.server.Listen()
 }
