@@ -45,6 +45,7 @@ func normaliseWriteResponseErr(err error, wr *WriteResponse) {
 		case azStorageBlob.StorageErrorCodeConditionNotMet:
 			wr.Status = "304 " + string(terr.ErrorCode)
 			wr.StatusCode = 304
+		default:
 		}
 	}
 }

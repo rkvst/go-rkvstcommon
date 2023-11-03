@@ -32,6 +32,7 @@ func storerOptionConditions(options *StorerOptions) (azStorageBlob.BlobAccessCon
 		blobAccessConditions.ModifiedAccessConditions.IfNoneMatch = &options.etag
 	case TagsWhere:
 		blobAccessConditions.ModifiedAccessConditions.IfTags = &options.etag
+	default:
 	}
 	return blobAccessConditions, nil
 }

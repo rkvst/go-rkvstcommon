@@ -69,8 +69,7 @@ func TestPutIfMatch(t *testing.T) {
 	// expect an error if we use the stale value
 	wr3, err := storer.Reader(context.Background(), blobName, WithEtagMatch(*wr.ETag))
 	if err == nil {
-		t.Fatalf("updated content despite stale etag")
-		logger.Sugar.Infof("%s", wr3.XMsErrorCode)
+		t.Fatalf("updated content despite stale etag: %s", wr3.XMsErrorCode)
 	}
 	// check the error is exactly as we expect
 	if !ErrorFromError(err).IsConditionNotMet() {
@@ -143,7 +142,7 @@ func Test_ReadIfNoneMatch(t *testing.T) {
 		t.Fatalf("expected Ok")
 	}
 
-	wr, err = storer.Put(context.Background(), blobName, NewBytesReaderCloser(secondValue))
+	_, err = storer.Put(context.Background(), blobName, NewBytesReaderCloser(secondValue))
 	if err != nil {
 		t.Fatalf("failed put second value: %v", err)
 	}

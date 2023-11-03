@@ -168,7 +168,7 @@ func (azp *Storer) Reader(
 
 		// for backwards compat, we only process the metadata on request
 		if options.getMetadata == BothMetadataAndBlob {
-			readerResponseMetadata(resp, resp.Metadata)
+			_ = readerResponseMetadata(resp, resp.Metadata) // the parse error is benign
 		}
 	}
 
