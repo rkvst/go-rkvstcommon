@@ -45,6 +45,7 @@ func TestPutIfMatch(t *testing.T) {
 
 	originalValue := []byte("ORIGINAL_VALUE")
 	secondValue := []byte("SECOND_VALUE")
+	thirdValue := []byte("THIRD_VALUE")
 
 	// establish the original value
 	wr, err := storer.Put(context.Background(), blobName, NewBytesReaderCloser(originalValue))
@@ -74,6 +75,17 @@ func TestPutIfMatch(t *testing.T) {
 	// check the error is exactly as we expect
 	if !ErrorFromError(err).IsConditionNotMet() {
 		t.Fatalf("expected ConditionNotMet err, got: %v", err)
+	}
+
+	_, err = storer.Put(
+		context.Background(), blobName, NewBytesReaderCloser(thirdValue), WithEtagMatch(*wr.ETag))
+	if err == nil {
+		t.Fatalf("overwrote second value with wrong etag")
+	}
+	_, err = storer.Put(
+		context.Background(), blobName, NewBytesReaderCloser(thirdValue), WithEtagMatch(*wr2.ETag))
+	if err != nil {
+		t.Fatalf("failed put third value: %v", err)
 	}
 }
 
