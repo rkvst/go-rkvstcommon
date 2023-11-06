@@ -1,5 +1,7 @@
 package azblob
 
+import "time"
+
 type GetMetadata int
 
 const (
@@ -17,23 +19,57 @@ const (
 	TagsWhere
 )
 
+type IfSinceCondition int
+
+const (
+	IfConditionNotUsed IfSinceCondition = iota
+	IfConditionModifiedSince
+	IfConditionUnmodifiedSince
+)
+
 func (g GetMetadata) String() string {
 	return [...]string{"No metadata handling", "Only metadata", "metadata and blob"}[g]
 }
 
 // StorerOptions - optional args for specifying optional behaviour
 type StorerOptions struct {
-	leaseID       string
-	metadata      map[string]string
-	tags          map[string]string
-	getMetadata   GetMetadata
-	getTags       bool
-	sizeLimit     int64
-	etag          string
-	etagCondition ETagCondition // ETagMatch || ETagNoneMatch
+	leaseID        string
+	metadata       map[string]string
+	tags           map[string]string
+	getMetadata    GetMetadata
+	getTags        bool
+	sizeLimit      int64
+	etag           string
+	etagCondition  ETagCondition // ETagMatch || ETagNoneMatch
+	sinceCondition IfSinceCondition
+	since          *time.Time
 }
 
 type Option func(*StorerOptions)
+
+func WithModifiedSince(since *time.Time) Option {
+	return func(a *StorerOptions) {
+		if since == nil {
+			a.sinceCondition = IfConditionNotUsed
+			a.since = nil
+			return
+		}
+		a.sinceCondition = IfConditionModifiedSince
+		a.since = since
+	}
+}
+
+func WithUnmodifiedSince(since *time.Time) Option {
+	return func(a *StorerOptions) {
+		if since == nil {
+			a.sinceCondition = IfConditionNotUsed
+			a.since = nil
+			return
+		}
+		a.sinceCondition = IfConditionUnmodifiedSince
+		a.since = since
+	}
+}
 
 // WithEtagMatch succeed if the blob etag matches the provied value
 // Typically used to make optimistic concurrency updates safe.

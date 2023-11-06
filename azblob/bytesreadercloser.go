@@ -2,17 +2,19 @@ package azblob
 
 import "bytes"
 
-type BytesReaderCloser struct {
+// BytesSeekableReader closer provides reader that has a No-Op Close and a
+// usuable Seek. Because we need Seek, we can't use ioutil.NopCloser
+type BytesSeekableReaderCloser struct {
 	*bytes.Reader
 }
 
-func NewBytesReaderCloser(b []byte) *BytesReaderCloser {
-	r := &BytesReaderCloser{
+func NewBytesReaderCloser(b []byte) *BytesSeekableReaderCloser {
+	r := &BytesSeekableReaderCloser{
 		Reader: bytes.NewReader(b),
 	}
 	return r
 }
 
-func (io *BytesReaderCloser) Close() error {
+func (io *BytesSeekableReaderCloser) Close() error {
 	return nil
 }

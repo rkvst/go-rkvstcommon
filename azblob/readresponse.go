@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/textproto"
 	"strconv"
+	"time"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/rkvst/go-rkvstcommon/logger"
@@ -27,6 +28,7 @@ type ReaderResponse struct {
 	// The following are copied as appropriate from the azure sdk response.
 	// See also WriterResponse
 	ETag         *string
+	LastModified *time.Time
 	Metadata     map[string]string // x-ms-meta header
 	StatusCode   int               // For If- header fails, err can be nil and code can be 304
 	Status       string
@@ -83,6 +85,7 @@ func downloadReaderResponse(r azStorageBlob.BlobDownloadResponse, rr *ReaderResp
 	if ok && len(value) > 0 {
 		rr.XMsErrorCode = value[0]
 	}
+	rr.LastModified = r.LastModified
 	rr.ETag = r.ETag
 	rr.Metadata = r.Metadata
 }

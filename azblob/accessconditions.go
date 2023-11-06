@@ -34,5 +34,12 @@ func storerOptionConditions(options *StorerOptions) (azStorageBlob.BlobAccessCon
 		blobAccessConditions.ModifiedAccessConditions.IfTags = &options.etag
 	default:
 	}
+	switch options.sinceCondition {
+	case IfConditionModifiedSince:
+		blobAccessConditions.ModifiedAccessConditions.IfModifiedSince = options.since
+	case IfConditionUnmodifiedSince:
+		blobAccessConditions.ModifiedAccessConditions.IfUnmodifiedSince = options.since
+	default:
+	}
 	return blobAccessConditions, nil
 }
