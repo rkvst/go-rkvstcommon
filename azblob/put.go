@@ -17,10 +17,6 @@ func (azp *Storer) Put(
 	source io.ReadSeekCloser,
 	opts ...Option,
 ) (*WriteResponse, error) {
-	err := azp.checkContainer(ctx)
-	if err != nil {
-		return nil, err
-	}
 	logger.Sugar.Debugf("Create or replace BlockBlob %s", identity)
 
 	options := &StorerOptions{}

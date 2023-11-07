@@ -16,7 +16,8 @@ type ReaderResponse struct {
 	Reader            io.ReadCloser
 	HashValue         string
 	MimeType          string
-	Size              int64
+	ContentLength     int64
+	Size              int64 // MIME size
 	Tags              map[string]string
 	TimestampAccepted string
 	ScannedStatus     string
@@ -78,16 +79,31 @@ func normaliseReaderResponseErr(err error, rr *ReaderResponse) {
 
 // downloadReaderResponse copies accross the azure sdk response values that are
 // meaningful to our supported api
-func downloadReaderResponse(r azStorageBlob.BlobDownloadResponse, rr *ReaderResponse) {
+func downloadReaderResponse(r azStorageBlob.BlobDownloadResponse, rr *ReaderResponse) error {
 	rr.Status = r.RawResponse.Status
 	rr.StatusCode = r.RawResponse.StatusCode
+
+	rr.LastModified = r.LastModified
+	rr.ETag = r.ETag
+	rr.Metadata = r.Metadata
+
 	value, ok := r.RawResponse.Header[xMsErrorCodeHeader]
 	if ok && len(value) > 0 {
 		rr.XMsErrorCode = value[0]
 	}
-	rr.LastModified = r.LastModified
-	rr.ETag = r.ETag
-	rr.Metadata = r.Metadata
+
+	s, ok := r.RawResponse.Header["Content-Length"]
+	if !ok {
+		return nil
+	}
+	if len(s) == 0 {
+		rr.ContentLength = 0
+		return nil
+	}
+
+	var err error
+	rr.ContentLength, err = strconv.ParseInt(s[0], 10, 64)
+	return err
 }
 
 // readerResponseMetadata processes and conditions values from the metadata we have specific support for.

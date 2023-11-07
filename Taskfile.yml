@@ -26,6 +26,11 @@ includes:
 
 tasks:
 
+  test:preflight:
+    desc: do all necessary cleanup and preparation for a test run
+    cmds:
+      - task: azurite:preflight
+
   qa-basic:
     desc: |
       format the source and run all the quality checks

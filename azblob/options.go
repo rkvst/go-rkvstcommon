@@ -43,9 +43,49 @@ type StorerOptions struct {
 	etagCondition  ETagCondition // ETagMatch || ETagNoneMatch
 	sinceCondition IfSinceCondition
 	since          *time.Time
+	// Options for List()
+	listPrefix string
+	listDelim  string
+	listMarker ListMarker
+	// extra data model items to include in the respponse
+	listIncludeTags     bool
+	listIncludeMetadata bool
+	// There are more, but these are all we need for now
 }
+type ListMarker *string
 
 type Option func(*StorerOptions)
+
+func WithListPrefix(prefix string) Option {
+	return func(a *StorerOptions) {
+		a.listPrefix = prefix
+	}
+}
+
+// TODO: this is an sdk v1.2.1 feature
+func WithListDelim(delim string) Option {
+	return func(a *StorerOptions) {
+		a.listDelim = delim
+	}
+}
+
+func WithListMarker(marker ListMarker) Option {
+	return func(a *StorerOptions) {
+		a.listMarker = marker
+	}
+}
+
+func WithListTags() Option {
+	return func(a *StorerOptions) {
+		a.listIncludeTags = true
+	}
+}
+
+func WithListMetadata() Option {
+	return func(a *StorerOptions) {
+		a.listIncludeMetadata = true
+	}
+}
 
 func WithModifiedSince(since *time.Time) Option {
 	return func(a *StorerOptions) {

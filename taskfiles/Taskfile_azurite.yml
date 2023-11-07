@@ -17,6 +17,13 @@ vars:
   AZURITE_IMAGE: '{{.AZURITE_IMAGE | default "mcr.microsoft.com/azure-storage/azurite"}}'
 
 tasks:
+  preflight:
+    desc: stops, cleans and re-starts the emulator providing a clean state
+    summary: |
+      stops, cleans and re-starts the emulator providing a clean state
+    cmds:
+      - task: cleanup
+      - task: start
   start:
     desc: start azurite azure local storage emulator in a named docker container
     summary: |

@@ -164,7 +164,10 @@ func (azp *Storer) Reader(
 	normaliseReaderResponseErr(err, resp)
 	if err == nil {
 		// We *always* copy the metadata into the response
-		downloadReaderResponse(get, resp)
+		err = downloadReaderResponse(get, resp)
+		if err != nil {
+			return resp, err
+		}
 
 		// for backwards compat, we only process the metadata on request
 		if options.getMetadata == BothMetadataAndBlob {

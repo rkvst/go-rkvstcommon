@@ -70,6 +70,7 @@ func uploadWriteResponse(r azStorageBlob.BlockBlobUploadResponse) *WriteResponse
 	}
 	w.Status = r.RawResponse.Status
 	w.StatusCode = r.RawResponse.StatusCode
+	w.LastModified = r.LastModified
 	value, ok := r.RawResponse.Header[xMsErrorCodeHeader]
 	if ok && len(value) > 0 {
 		w.XMsErrorCode = value[0]
