@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/google/uuid"
 )
 
 func uniqueTestName(testName string, t *testing.T) string {

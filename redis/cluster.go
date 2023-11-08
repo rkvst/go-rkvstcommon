@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	env "github.com/datatrails/go-datatrails-common/environment"
 	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/go-redis/redis/v8"
 )
 
 const (

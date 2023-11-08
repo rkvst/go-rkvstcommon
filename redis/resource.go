@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/go-redis/redis/v8"
 	otrace "github.com/opentracing/opentracing-go"
-	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 const (

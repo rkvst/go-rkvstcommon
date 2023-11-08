@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	env "github.com/datatrails/go-datatrails-common/environment"
 	"github.com/datatrails/go-datatrails-common/httpserver"
 	"github.com/datatrails/go-datatrails-common/tracing"
+	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"google.golang.org/grpc"
 )

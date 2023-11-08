@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis/v8"
 	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/go-redis/redis/v8"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

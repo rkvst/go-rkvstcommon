@@ -40,8 +40,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	otrace "github.com/opentracing/opentracing-go"
 	"github.com/datatrails/go-datatrails-common/logger"
+	otrace "github.com/opentracing/opentracing-go"
 )
 
 const (
