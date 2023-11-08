@@ -14,7 +14,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // KeyVault is the azure keyvault client for interacting with keyvault keys

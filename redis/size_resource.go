@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 type SizeResource struct {

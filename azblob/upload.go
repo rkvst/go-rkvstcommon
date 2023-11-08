@@ -18,7 +18,7 @@ import (
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	mimetype "github.com/gabriel-vasile/mimetype"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 var (

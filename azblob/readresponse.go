@@ -8,8 +8,8 @@ import (
 	"time"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
-	"github.com/rkvst/go-rkvstcommon/logger"
-	"github.com/rkvst/go-rkvstcommon/scannedstatus"
+	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/datatrails/go-datatrails-common/scannedstatus"
 )
 
 type ReaderResponse struct {

@@ -14,8 +14,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	env "github.com/rkvst/go-rkvstcommon/environment"
-	"github.com/rkvst/go-rkvstcommon/grpchealth"
+	env "github.com/datatrails/go-datatrails-common/environment"
+	"github.com/datatrails/go-datatrails-common/grpchealth"
 	grpcHealth "google.golang.org/grpc/health/grpc_health_v1"
 )
 

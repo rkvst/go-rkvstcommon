@@ -7,7 +7,7 @@ import (
 	"net/http"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // HTTPError error type with info about http.StatusCode

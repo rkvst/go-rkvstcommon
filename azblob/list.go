@@ -7,7 +7,7 @@ import (
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // Count counts the number of blobs filtered by the given tags filter

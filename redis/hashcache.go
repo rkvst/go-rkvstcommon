@@ -9,7 +9,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	otrace "github.com/opentracing/opentracing-go"
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // HashCache uses redis optimistic locking and hash store to cache strings

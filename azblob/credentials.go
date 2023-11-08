@@ -12,8 +12,8 @@ import (
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
-	"github.com/rkvst/go-rkvstcommon/secrets"
+	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/datatrails/go-datatrails-common/secrets"
 )
 
 const (

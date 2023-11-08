@@ -13,7 +13,7 @@ vars:
   AZURITE_BLOB_PORT: '{{.AZURITE_BLOB_PORT | default "10000"}}'
   AZURITE_QUEUE_PORT: '{{.AZURITE_QUEUE_PORT | default "10001"}}'
   AZURITE_TABLE_PORT: '{{.AZURITE_TABLE_PORT | default "11111"}}'
-  AZURITE_CONTAINER_NAME: '{{.AZURITE_CONTAINER_NAME | default "go-rkvstcommon-azurite"}}'
+  AZURITE_CONTAINER_NAME: '{{.AZURITE_CONTAINER_NAME | default "go-datatrails-common-azurite"}}'
   AZURITE_IMAGE: '{{.AZURITE_IMAGE | default "mcr.microsoft.com/azure-storage/azurite"}}'
 
 tasks:

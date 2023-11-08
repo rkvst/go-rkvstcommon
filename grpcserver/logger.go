@@ -1,7 +1,7 @@
 package grpcserver
 
 import (
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 type Logger = logger.Logger

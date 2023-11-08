@@ -7,7 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // Repeat repeatedly calls func until it returns without a recoverable error

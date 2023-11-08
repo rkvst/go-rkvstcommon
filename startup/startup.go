@@ -3,7 +3,7 @@
 package startup
 
 import (
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // RoutineFatalOnError runs a function in go routine and fatals when the function errors

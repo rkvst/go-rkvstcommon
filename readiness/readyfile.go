@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // ReadSmallFile polls attempting to read a small file and returns its entire contents

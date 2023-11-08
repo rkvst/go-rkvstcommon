@@ -15,8 +15,8 @@ import (
 	otnethttp "github.com/opentracing-contrib/go-stdlib/nethttp"
 	opentracing "github.com/opentracing/opentracing-go"
 
-	"github.com/rkvst/go-rkvstcommon/environment"
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/environment"
+	"github.com/datatrails/go-datatrails-common/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	grpcHealth "google.golang.org/grpc/health/grpc_health_v1"
@@ -82,7 +82,7 @@ func StartSpanFromContext(ctx context.Context, name string, options ...opentraci
 	log.Debugf("tracing.StartSpanFromContext")
 
 	tags := make(map[string]interface{})
-	tags["component"] = "RKVST"
+	tags["component"] = "DATATRAILS"
 	options = append(options, opentracing.Tags(tags))
 	return opentracing.StartSpanFromContext(ctx, name, options...)
 }

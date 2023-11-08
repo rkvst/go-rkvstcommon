@@ -6,7 +6,7 @@ import (
 	context "context"
 
 	azservicebus "github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
-	azbus "github.com/rkvst/go-rkvstcommon/azbus"
+	azbus "github.com/datatrails/go-datatrails-common/azbus"
 
 	mock "github.com/stretchr/testify/mock"
 )

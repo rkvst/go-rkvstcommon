@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
-	env "github.com/rkvst/go-rkvstcommon/environment"
-	"github.com/rkvst/go-rkvstcommon/httpserver"
-	"github.com/rkvst/go-rkvstcommon/tracing"
+	env "github.com/datatrails/go-datatrails-common/environment"
+	"github.com/datatrails/go-datatrails-common/httpserver"
+	"github.com/datatrails/go-datatrails-common/tracing"
 
 	"google.golang.org/grpc"
 )

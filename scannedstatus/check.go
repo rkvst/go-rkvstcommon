@@ -7,8 +7,8 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/rkvst/go-rkvstcommon/errhandling"
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/errhandling"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 const (

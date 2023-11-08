@@ -9,7 +9,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
-	"github.com/rkvst/go-rkvstcommon/tracing"
+	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 var (

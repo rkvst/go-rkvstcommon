@@ -11,7 +11,7 @@ env_build: &env_build
 
   # The GOCACHE in a linux container on Docker for windows MUST be on a linuxy
   # file system
-  GOCACHE: /tmp/jitsuin/go-rkvstcommon
+  GOCACHE: /tmp/jitsuin/go-datatrails-common
 
 vars:
 

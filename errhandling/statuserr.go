@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
-	"github.com/rkvst/go-rkvstcommon/tracing"
+	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 // so we dont have to import status package everywhere

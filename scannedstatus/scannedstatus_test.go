@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/stretchr/testify/require"
 )
 

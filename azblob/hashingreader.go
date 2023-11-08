@@ -4,7 +4,7 @@ import (
 	"hash"
 	"io"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 type hashingReader struct {

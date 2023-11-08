@@ -9,7 +9,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	otlog "github.com/opentracing/opentracing-go/log"
 
-	"github.com/rkvst/go-rkvstcommon/tracing"
+	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 // so we dont have to import the azure repo everywhere

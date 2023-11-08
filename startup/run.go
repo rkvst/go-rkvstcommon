@@ -5,9 +5,9 @@ package startup
 import (
 	"os"
 
-	"github.com/rkvst/go-rkvstcommon/environment"
-	"github.com/rkvst/go-rkvstcommon/logger"
-	"github.com/rkvst/go-rkvstcommon/tracing"
+	"github.com/datatrails/go-datatrails-common/environment"
+	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 type Runner func(string, *logger.WrappedLogger) error

@@ -1,8 +1,8 @@
-module github.com/rkvst/go-rkvstcommon
+module github.com/datatrails/go-datatrails-common
 
 go 1.21
 
-replace github.com/rkvst/go-rkvstcommon => ./
+replace github.com/datatrails/go-datatrails-common => ./
 
 replace (
 	// These pseudoversions are for: ConsenSys/quorum@v22.4.4
@@ -23,6 +23,7 @@ require (
 	github.com/KimMachineGun/automemlimit v0.2.6
 	github.com/ethereum/go-ethereum v0.0.0-20221208112643-d318a5aa973a
 	github.com/go-redis/redis/v8 v8.11.5
+	github.com/google/uuid v1.3.1
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
@@ -41,7 +42,7 @@ require (
 
 require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/btcsuite/btcd v0.20.1-beta // indirect
 )
 
 require (

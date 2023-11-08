@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // ResourceCounter is a function which accepts a context and counts the number of

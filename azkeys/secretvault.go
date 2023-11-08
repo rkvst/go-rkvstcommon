@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/rkvst/go-rkvstcommon/logger"
+	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 const (
