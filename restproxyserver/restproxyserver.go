@@ -61,7 +61,7 @@ type RESTProxyServer struct {
 
 type RESTProxyServerOption func(*RESTProxyServer)
 
-// WithMarshaler specifies on an optional marshaler.
+// WithMarshaler specifies an optional marshaler.
 func WithMarshaler(mime string, m Marshaler) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
 		g.options = append(g.options, runtime.WithMarshalerOption(mime, m))
@@ -102,14 +102,14 @@ func WithErrorHandler(o ErrorHandlerFunc) RESTProxyServerOption {
 	}
 }
 
-// WithGRPCAddress - overides the defaultGRPSAddress ('localhost:<port>')
+// WithGRPCAddress - overides the defaultGRPCAddress ('localhost:<port>')
 func WithGRPCAddress(a string) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
 		g.grpcAddress = a
 	}
 }
 
-// WithRegisterHandler adds another grpc-gateway handler. A nil value will emit an
+// WithRegisterHandlers adds grpc-gateway handlers. A nil value will emit an
 // error from the Listen() method.
 func WithRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
@@ -117,7 +117,7 @@ func WithRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServe
 	}
 }
 
-// WithOptionalRegisterHandler adds another grpc-gateway handler. A nil value will be
+// WithOptionalRegisterHandler adds grpc-gateway handlers. A nil value will be
 // ignored.
 func WithOptionalRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
@@ -130,7 +130,7 @@ func WithOptionalRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTPr
 	}
 }
 
-// WithHTTPHandler adds a handler on the http endpoint. A nil value will
+// WithHTTPHandlers adds handlers on the http endpoint. A nil value will
 // return an error on executiong Listen()
 func WithHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
@@ -138,7 +138,7 @@ func WithHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
 	}
 }
 
-// WithOptionalHTTPHandler adds a handler on the http endpoint. A nil value will
+// WithOptionalHTTPHandlers adds handlers on the http endpoint. A nil value will
 // be ignored.
 func WithOptionalHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {

@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	//grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_otrace "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
 	"google.golang.org/grpc"
@@ -78,7 +77,7 @@ func tracingFilter(ctx context.Context, fullMethodName string) bool {
 	return true
 }
 
-// New cretaes a new GRPCServer that is bound to a specific GRPC API. This object complies with
+// New creates a new GRPCServer that is bound to a specific GRPC API. This object complies with
 // the standard Listener service and can be managed by the startup.Listeners object.
 func New(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
 	listenStr := fmt.Sprintf(":%s", env.GetOrFatal("PORT"))
@@ -102,8 +101,6 @@ func New(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
 		),
 	)
 
-	// RegisterAccessPoliciesServer(s grpc.ServiceRegistrar, srv AccessPoliciesServer)
-	//accessPolicyV1API.RegisterAccessPoliciesServer(server, s)
 	g.register(server)
 
 	if g.health {

@@ -52,7 +52,7 @@ func WithOptionalHandlers(handlers ...HandleChainFunc) ServerOption {
 	}
 }
 
-// New creates a new httpserver. ChainHandlers that return nil are ignored.
+// New creates a new httpserver.
 func New(log Logger, name string, port string, h http.Handler, opts ...ServerOption) *Server {
 	s := Server{
 		server: http.Server{
