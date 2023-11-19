@@ -114,11 +114,11 @@ func (azp *Storer) Reader(
 		blobValue, ok := resp.Tags[k]
 		if !ok {
 			logger.Sugar.Infof("tag %s is not specified on blob", k)
-			return nil, NewStatusError(fmt.Sprintf("tag %s is not specified on blob", k), http.StatusForbidden)
+			return nil, NewStatusError(fmt.Sprintf("tag %s is not specified on blob", k), http.StatusNotFound)
 		}
 		if blobValue != requiredValue {
 			logger.Sugar.Infof("blob has different Tag %s than required %s", blobValue, requiredValue)
-			return nil, NewStatusError(fmt.Sprintf("blob has different Tag %s than required %s", blobValue, requiredValue), http.StatusForbidden)
+			return nil, NewStatusError(fmt.Sprintf("blob has different Tag %s than required %s", blobValue, requiredValue), http.StatusNotFound)
 		}
 	}
 

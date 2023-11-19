@@ -79,7 +79,7 @@ func (s *Server) Listen() error {
 	s.log.Infof("Listen")
 	h := s.handler
 	for i, handler := range s.handlers {
-		s.log.Debugf("%d: h %v handler %v", i, handler)
+		s.log.Debugf("%d: handler %v", i, handler)
 		if handler == nil {
 			return ErrNilHandler
 		}
