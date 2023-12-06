@@ -26,7 +26,7 @@ type Handler interface {
 // PHandler - handler used in parallelised receiver. This Handler will eventually supercede
 // the Handler interface above.
 type PHandler interface {
-	Handle(context.Context, *ReceivedMessage) (Disposition, context.Context, error, *ReceivedMessage)
+	Handle(context.Context, *ReceivedMessage) (Disposition, context.Context, error)
 }
 
 const (
@@ -223,7 +223,7 @@ func (r *Receiver) elapsedParallel(ctx context.Context, count int, maxDuration t
 	defer log.Close()
 
 	log.Debugf("Processing message %d", count)
-	disp, ctx, err, msg := r.handleParallelReceivedMessageWithTracingContext(ctx, msg, handler)
+	disp, ctx, err := r.handleParallelReceivedMessageWithTracingContext(ctx, msg, handler)
 	_ = r.Dispose(ctx, disp, err, msg)
 
 	duration := time.Since(now)

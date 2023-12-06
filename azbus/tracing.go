@@ -33,7 +33,7 @@ func (r *Receiver) HandleReceivedMessageWithTracingContext(ctx context.Context, 
 }
 
 // handle tracing span for messages recieved via the parallelised ReceiveMessages.
-func (r *Receiver) handleParallelReceivedMessageWithTracingContext(ctx context.Context, message *ReceivedMessage, handler PHandler) (Disposition, context.Context, error, *ReceivedMessage) {
+func (r *Receiver) handleParallelReceivedMessageWithTracingContext(ctx context.Context, message *ReceivedMessage, handler PHandler) (Disposition, context.Context, error) {
 	log := r.log.FromContext(ctx)
 
 	log.Debugf("ContextFromReceivedMessage(): ApplicationProperties %v", message.ApplicationProperties)
