@@ -235,11 +235,9 @@ func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration ti
 		log.Infof("WARNING: please either enable SERVICEBUS_RENEW_LOCK or reduce SERVICEBUS_INCOMING_MESSAGES")
 		log.Infof("WARNING: both can be found in the helm chart for each service.")
 	}
-	if err != nil {
-		if errors.Is(err, ErrPeekLockTimeout) {
-			log.Infof("WARNING: processing msg %d duration %s returned error: %v", count, duration, err)
-			log.Infof("WARNING: please enable SERVICEBUS_RENEW_LOCK which can be found in the helm chart")
-		}
+	if errors.Is(err, ErrPeekLockTimeout) {
+		log.Infof("WARNING: processing msg %d duration %s returned error: %v", count, duration, err)
+		log.Infof("WARNING: please enable SERVICEBUS_RENEW_LOCK which can be found in the helm chart")
 	}
 }
 
@@ -398,6 +396,12 @@ func (r *Receiver) receiveMessagesInParallel() error {
 		}(ctx, i, r)
 	}
 
+	// Extensively tested by loading messages and checking that the waitGroup logic always reset to zero so messages
+	// continue to be processed. The sync.Waitgroup will panic if the internal counter ever goes to less than zero - this is
+	// what we want as then the service will restart. Extensive testing has never encountered this.
+	// The load tests wree conducted with over 1000 simplhash anchor messages present and with NumberOfReceivedMessage=8.
+	// The code mosly read 8 messages at a time - sometimes only 3 or 4 were read - either way the code processed the
+	// messages successfully and only finished once the receiver was empty.
 	for {
 		var err error
 		var messages []*ReceivedMessage
