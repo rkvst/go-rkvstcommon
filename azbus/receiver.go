@@ -18,14 +18,14 @@ var (
 type ReceivedMessage = azservicebus.ReceivedMessage
 
 // Handler - old style handler that assumes the handler has access to the receiver.
-// XXXX: this is DEPRECATED in favour of the parallelised PHandler.
+// XXXX: this is DEPRECATED in favour of the parallelised ParallelHandler.
 type Handler interface {
 	Handle(context.Context, *ReceivedMessage) error
 }
 
-// PHandler - handler used in parallelised receiver. This Handler will eventually supercede
+// ParallelHandler - handler used in parallelised receiver. This Handler will eventually supercede
 // the Handler interface above.
-type PHandler interface {
+type ParallelHandler interface {
 	Handle(context.Context, *ReceivedMessage) (Disposition, context.Context, error)
 }
 
@@ -107,8 +107,8 @@ type Receiver struct {
 	mtx      sync.Mutex
 	receiver *azservicebus.Receiver
 	options  *azservicebus.ReceiverOptions
-	handler  Handler    // for ReceiveMessages
-	handlers []PHandler // for ReceiveMessagesInParallel
+	handler  Handler           // for ReceiveMessages
+	handlers []ParallelHandler // for ReceiveMessagesInParallel
 }
 
 type ReceiverOption func(*Receiver)
@@ -120,8 +120,8 @@ func WithHandler(h Handler) ReceiverOption {
 	}
 }
 
-// WithHandlers - e the new parallelised handler
-func WithHandlers(h ...PHandler) ReceiverOption {
+// WithHandlers - the new parallelised handler
+func WithHandlers(h ...ParallelHandler) ReceiverOption {
 	return func(r *Receiver) {
 		r.handlers = append(r.handlers, h...)
 	}
@@ -153,7 +153,7 @@ func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiv
 		Cfg:      cfg,
 		azClient: NewAZClient(cfg.ConnectionString),
 		options:  options,
-		handlers: []PHandler{},
+		handlers: []ParallelHandler{},
 	}
 	r.log = log.WithIndex("receiver", r.String())
 	for _, opt := range opts {
@@ -215,8 +215,8 @@ func (r *Receiver) elapsed(ctx context.Context, count int, total int, maxDuratio
 	return err
 }
 
-// elapsed emits 2 log messages detailing how long processing took. Additionally executes suitable disposition of message.
-func (r *Receiver) elapsedParallel(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler PHandler) {
+// processMessages disposes of messages and emits 2 log messages detailing how long processing took.
+func (r *Receiver) processMessages(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler ParallelHandler) {
 	now := time.Now()
 
 	log := r.log.FromContext(ctx)
@@ -390,7 +390,7 @@ func (r *Receiver) receiveMessagesInParallel() error {
 						// we need a timeout if RenewMessageLock is disabled
 						renewCtx, renewCancel, maxDuration = rr.setTimeout(rctx, rr.log, msg)
 					}
-					rr.elapsedParallel(renewCtx, ii+1, maxDuration, msg, rr.handlers[ii])
+					rr.processMessages(renewCtx, ii+1, maxDuration, msg, rr.handlers[ii])
 					renewCancel()
 					wg.Done()
 				}
