@@ -215,8 +215,8 @@ func (r *Receiver) elapsed(ctx context.Context, count int, total int, maxDuratio
 	return err
 }
 
-// processMessages disposes of messages and emits 2 log messages detailing how long processing took.
-func (r *Receiver) processMessages(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler ParallelHandler) {
+// processMessage disposes of messages and emits 2 log messages detailing how long processing took.
+func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler ParallelHandler) {
 	now := time.Now()
 
 	log := r.log.FromContext(ctx)
@@ -390,7 +390,7 @@ func (r *Receiver) receiveMessagesInParallel() error {
 						// we need a timeout if RenewMessageLock is disabled
 						renewCtx, renewCancel, maxDuration = rr.setTimeout(rctx, rr.log, msg)
 					}
-					rr.processMessages(renewCtx, ii+1, maxDuration, msg, rr.handlers[ii])
+					rr.processMessage(renewCtx, ii+1, maxDuration, msg, rr.handlers[ii])
 					renewCancel()
 					wg.Done()
 				}
