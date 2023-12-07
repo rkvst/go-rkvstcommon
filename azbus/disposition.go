@@ -9,6 +9,8 @@ import (
 	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
+// Disposition describes the eventual demise of the message after processing by the client.
+// Upstream is notified whether the message can be deleted, deadlettered or will be reprocessed later.
 type Disposition int
 
 const (
