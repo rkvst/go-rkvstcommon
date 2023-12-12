@@ -3,9 +3,10 @@
 package mocks
 
 import (
-	context "context"
-
 	azservicebus "github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
+	azbus "github.com/datatrails/go-datatrails-common/azbus"
+
+	context "context"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -24,17 +25,36 @@ func (_m *Handler) EXPECT() *Handler_Expecter {
 }
 
 // Handle provides a mock function with given fields: _a0, _a1
-func (_m *Handler) Handle(_a0 context.Context, _a1 *azservicebus.ReceivedMessage) error {
+func (_m *Handler) Handle(_a0 context.Context, _a1 *azservicebus.ReceivedMessage) (azbus.Disposition, context.Context, error) {
 	ret := _m.Called(_a0, _a1)
 
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *azservicebus.ReceivedMessage) error); ok {
+	var r0 azbus.Disposition
+	var r1 context.Context
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, *azservicebus.ReceivedMessage) (azbus.Disposition, context.Context, error)); ok {
+		return rf(_a0, _a1)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, *azservicebus.ReceivedMessage) azbus.Disposition); ok {
 		r0 = rf(_a0, _a1)
 	} else {
-		r0 = ret.Error(0)
+		r0 = ret.Get(0).(azbus.Disposition)
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(context.Context, *azservicebus.ReceivedMessage) context.Context); ok {
+		r1 = rf(_a0, _a1)
+	} else {
+		if ret.Get(1) != nil {
+			r1 = ret.Get(1).(context.Context)
+		}
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, *azservicebus.ReceivedMessage) error); ok {
+		r2 = rf(_a0, _a1)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
 }
 
 // Handler_Handle_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Handle'
@@ -56,12 +76,12 @@ func (_c *Handler_Handle_Call) Run(run func(_a0 context.Context, _a1 *azserviceb
 	return _c
 }
 
-func (_c *Handler_Handle_Call) Return(_a0 error) *Handler_Handle_Call {
-	_c.Call.Return(_a0)
+func (_c *Handler_Handle_Call) Return(_a0 azbus.Disposition, _a1 context.Context, _a2 error) *Handler_Handle_Call {
+	_c.Call.Return(_a0, _a1, _a2)
 	return _c
 }
 
-func (_c *Handler_Handle_Call) RunAndReturn(run func(context.Context, *azservicebus.ReceivedMessage) error) *Handler_Handle_Call {
+func (_c *Handler_Handle_Call) RunAndReturn(run func(context.Context, *azservicebus.ReceivedMessage) (azbus.Disposition, context.Context, error)) *Handler_Handle_Call {
 	_c.Call.Return(run)
 	return _c
 }

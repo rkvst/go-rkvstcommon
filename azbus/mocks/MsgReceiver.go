@@ -3,10 +3,9 @@
 package mocks
 
 import (
-	azservicebus "github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
-	azbus "github.com/datatrails/go-datatrails-common/azbus"
-
 	context "context"
+
+	azbus "github.com/datatrails/go-datatrails-common/azbus"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -22,50 +21,6 @@ type MsgReceiver_Expecter struct {
 
 func (_m *MsgReceiver) EXPECT() *MsgReceiver_Expecter {
 	return &MsgReceiver_Expecter{mock: &_m.Mock}
-}
-
-// Abandon provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MsgReceiver) Abandon(_a0 context.Context, _a1 error, _a2 *azservicebus.ReceivedMessage) error {
-	ret := _m.Called(_a0, _a1, _a2)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, error, *azservicebus.ReceivedMessage) error); ok {
-		r0 = rf(_a0, _a1, _a2)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MsgReceiver_Abandon_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Abandon'
-type MsgReceiver_Abandon_Call struct {
-	*mock.Call
-}
-
-// Abandon is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 error
-//   - _a2 *azservicebus.ReceivedMessage
-func (_e *MsgReceiver_Expecter) Abandon(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MsgReceiver_Abandon_Call {
-	return &MsgReceiver_Abandon_Call{Call: _e.mock.On("Abandon", _a0, _a1, _a2)}
-}
-
-func (_c *MsgReceiver_Abandon_Call) Run(run func(_a0 context.Context, _a1 error, _a2 *azservicebus.ReceivedMessage)) *MsgReceiver_Abandon_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(error), args[2].(*azservicebus.ReceivedMessage))
-	})
-	return _c
-}
-
-func (_c *MsgReceiver_Abandon_Call) Return(_a0 error) *MsgReceiver_Abandon_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MsgReceiver_Abandon_Call) RunAndReturn(run func(context.Context, error, *azservicebus.ReceivedMessage) error) *MsgReceiver_Abandon_Call {
-	_c.Call.Return(run)
-	return _c
 }
 
 // Close provides a mock function with given fields: _a0
@@ -97,93 +52,6 @@ func (_c *MsgReceiver_Close_Call) Return() *MsgReceiver_Close_Call {
 }
 
 func (_c *MsgReceiver_Close_Call) RunAndReturn(run func(context.Context)) *MsgReceiver_Close_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Complete provides a mock function with given fields: _a0, _a1
-func (_m *MsgReceiver) Complete(_a0 context.Context, _a1 *azservicebus.ReceivedMessage) error {
-	ret := _m.Called(_a0, _a1)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *azservicebus.ReceivedMessage) error); ok {
-		r0 = rf(_a0, _a1)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MsgReceiver_Complete_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Complete'
-type MsgReceiver_Complete_Call struct {
-	*mock.Call
-}
-
-// Complete is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 *azservicebus.ReceivedMessage
-func (_e *MsgReceiver_Expecter) Complete(_a0 interface{}, _a1 interface{}) *MsgReceiver_Complete_Call {
-	return &MsgReceiver_Complete_Call{Call: _e.mock.On("Complete", _a0, _a1)}
-}
-
-func (_c *MsgReceiver_Complete_Call) Run(run func(_a0 context.Context, _a1 *azservicebus.ReceivedMessage)) *MsgReceiver_Complete_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*azservicebus.ReceivedMessage))
-	})
-	return _c
-}
-
-func (_c *MsgReceiver_Complete_Call) Return(_a0 error) *MsgReceiver_Complete_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MsgReceiver_Complete_Call) RunAndReturn(run func(context.Context, *azservicebus.ReceivedMessage) error) *MsgReceiver_Complete_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// DeadLetter provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MsgReceiver) DeadLetter(_a0 context.Context, _a1 error, _a2 *azservicebus.ReceivedMessage) error {
-	ret := _m.Called(_a0, _a1, _a2)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, error, *azservicebus.ReceivedMessage) error); ok {
-		r0 = rf(_a0, _a1, _a2)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MsgReceiver_DeadLetter_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeadLetter'
-type MsgReceiver_DeadLetter_Call struct {
-	*mock.Call
-}
-
-// DeadLetter is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 error
-//   - _a2 *azservicebus.ReceivedMessage
-func (_e *MsgReceiver_Expecter) DeadLetter(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MsgReceiver_DeadLetter_Call {
-	return &MsgReceiver_DeadLetter_Call{Call: _e.mock.On("DeadLetter", _a0, _a1, _a2)}
-}
-
-func (_c *MsgReceiver_DeadLetter_Call) Run(run func(_a0 context.Context, _a1 error, _a2 *azservicebus.ReceivedMessage)) *MsgReceiver_DeadLetter_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(error), args[2].(*azservicebus.ReceivedMessage))
-	})
-	return _c
-}
-
-func (_c *MsgReceiver_DeadLetter_Call) Return(_a0 error) *MsgReceiver_DeadLetter_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MsgReceiver_DeadLetter_Call) RunAndReturn(run func(context.Context, error, *azservicebus.ReceivedMessage) error) *MsgReceiver_DeadLetter_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -307,92 +175,6 @@ func (_c *MsgReceiver_Open_Call) Return(_a0 error) *MsgReceiver_Open_Call {
 }
 
 func (_c *MsgReceiver_Open_Call) RunAndReturn(run func() error) *MsgReceiver_Open_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ReceiveMessages provides a mock function with given fields: _a0
-func (_m *MsgReceiver) ReceiveMessages(_a0 azbus.Handler) error {
-	ret := _m.Called(_a0)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(azbus.Handler) error); ok {
-		r0 = rf(_a0)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MsgReceiver_ReceiveMessages_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReceiveMessages'
-type MsgReceiver_ReceiveMessages_Call struct {
-	*mock.Call
-}
-
-// ReceiveMessages is a helper method to define mock.On call
-//   - _a0 azbus.Handler
-func (_e *MsgReceiver_Expecter) ReceiveMessages(_a0 interface{}) *MsgReceiver_ReceiveMessages_Call {
-	return &MsgReceiver_ReceiveMessages_Call{Call: _e.mock.On("ReceiveMessages", _a0)}
-}
-
-func (_c *MsgReceiver_ReceiveMessages_Call) Run(run func(_a0 azbus.Handler)) *MsgReceiver_ReceiveMessages_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(azbus.Handler))
-	})
-	return _c
-}
-
-func (_c *MsgReceiver_ReceiveMessages_Call) Return(_a0 error) *MsgReceiver_ReceiveMessages_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MsgReceiver_ReceiveMessages_Call) RunAndReturn(run func(azbus.Handler) error) *MsgReceiver_ReceiveMessages_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Reschedule provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MsgReceiver) Reschedule(_a0 context.Context, _a1 error, _a2 *azservicebus.ReceivedMessage) error {
-	ret := _m.Called(_a0, _a1, _a2)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, error, *azservicebus.ReceivedMessage) error); ok {
-		r0 = rf(_a0, _a1, _a2)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MsgReceiver_Reschedule_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Reschedule'
-type MsgReceiver_Reschedule_Call struct {
-	*mock.Call
-}
-
-// Reschedule is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 error
-//   - _a2 *azservicebus.ReceivedMessage
-func (_e *MsgReceiver_Expecter) Reschedule(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MsgReceiver_Reschedule_Call {
-	return &MsgReceiver_Reschedule_Call{Call: _e.mock.On("Reschedule", _a0, _a1, _a2)}
-}
-
-func (_c *MsgReceiver_Reschedule_Call) Run(run func(_a0 context.Context, _a1 error, _a2 *azservicebus.ReceivedMessage)) *MsgReceiver_Reschedule_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(error), args[2].(*azservicebus.ReceivedMessage))
-	})
-	return _c
-}
-
-func (_c *MsgReceiver_Reschedule_Call) Return(_a0 error) *MsgReceiver_Reschedule_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MsgReceiver_Reschedule_Call) RunAndReturn(run func(context.Context, error, *azservicebus.ReceivedMessage) error) *MsgReceiver_Reschedule_Call {
 	_c.Call.Return(run)
 	return _c
 }

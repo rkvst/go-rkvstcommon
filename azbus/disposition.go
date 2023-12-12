@@ -34,24 +34,27 @@ func (d Disposition) String() string {
 	return fmt.Sprintf("Unknown%d", d)
 }
 
-func (r *Receiver) Dispose(ctx context.Context, d Disposition, err error, msg *ReceivedMessage) error {
+func (r *Receiver) dispose(ctx context.Context, d Disposition, err error, msg *ReceivedMessage) {
 	switch {
 	case d == DeadletterDisposition:
-		return r.DeadLetter(ctx, err, msg)
+		r.deadLetter(ctx, err, msg)
+		return
 	case d == AbandonDisposition:
-		return r.Abandon(ctx, err, msg)
+		r.abandon(ctx, err, msg)
+		return
 	case d == RescheduleDisposition:
-		return r.Reschedule(ctx, err, msg)
+		r.reschedule(ctx, err, msg)
+		return
 	case d == CompleteDisposition:
-		return r.parallelComplete(ctx, err, msg)
+		r.complete(ctx, err, msg)
+		return
 	}
-	return fmt.Errorf("Unknown%d", d)
 }
 
 // NB: ALL disposition methods return nil so they can be used in return statements
 
 // Abandon abandons message. This function is not used but is present for consistency.
-func (r *Receiver) Abandon(ctx context.Context, err error, msg *ReceivedMessage) error {
+func (r *Receiver) abandon(ctx context.Context, err error, msg *ReceivedMessage) {
 	ctx = context.WithoutCancel(ctx)
 	log := r.log.FromContext(ctx)
 	defer log.Close()
@@ -64,7 +67,6 @@ func (r *Receiver) Abandon(ctx context.Context, err error, msg *ReceivedMessage)
 		azerr := fmt.Errorf("Abandon Message failure: %w", NewAzbusError(err1))
 		log.Infof("%s", azerr)
 	}
-	return nil
 }
 
 // Reschedule handles when a message should be deferred at a later time. There are a
@@ -72,7 +74,7 @@ func (r *Receiver) Abandon(ctx context.Context, err error, msg *ReceivedMessage)
 // azservicebus to resubmit the message 1 minute later. We keep the function signature with
 // unused arguments for consistency and in case we need to implement more sophisticated
 // algorithms in future.
-func (r *Receiver) Reschedule(ctx context.Context, err error, msg *ReceivedMessage) error {
+func (r *Receiver) reschedule(ctx context.Context, err error, msg *ReceivedMessage) {
 	ctx = context.WithoutCancel(ctx)
 	log := r.log.FromContext(ctx)
 	defer log.Close()
@@ -80,11 +82,10 @@ func (r *Receiver) Reschedule(ctx context.Context, err error, msg *ReceivedMessa
 	span, _ := tracing.StartSpanFromContext(ctx, "Message.Reschedule")
 	defer span.Finish()
 	log.Infof("Reschedule Message on DeliveryCount %d: %v", msg.DeliveryCount, err)
-	return nil
 }
 
 // DeadLetter explicitly deadletters a message.
-func (r *Receiver) DeadLetter(ctx context.Context, err error, msg *ReceivedMessage) error {
+func (r *Receiver) deadLetter(ctx context.Context, err error, msg *ReceivedMessage) {
 	ctx = context.WithoutCancel(ctx)
 	log := r.log.FromContext(ctx)
 	defer log.Close()
@@ -100,31 +101,9 @@ func (r *Receiver) DeadLetter(ctx context.Context, err error, msg *ReceivedMessa
 		azerr := fmt.Errorf("DeadLetter Message failure: %w", NewAzbusError(err1))
 		log.Infof("%s", azerr)
 	}
-	return nil
 }
 
-func (r *Receiver) Complete(ctx context.Context, msg *ReceivedMessage) error {
-	ctx = context.WithoutCancel(ctx)
-	log := r.log.FromContext(ctx)
-	defer log.Close()
-
-	span, _ := tracing.StartSpanFromContext(ctx, "Message.Complete")
-	defer span.Finish()
-
-	log.Infof("Complete Message")
-
-	err := r.receiver.CompleteMessage(ctx, msg, nil)
-	if err != nil {
-		// If the completion fails then the message will get rescheduled, but it's effect will
-		// have been made, so we could get duplication issues.
-		azerr := fmt.Errorf("Complete: failed to settle message: %w", NewAzbusError(err))
-		log.Infof("%s", azerr)
-	}
-	return nil
-}
-
-// like Complete but an error may indicate that this will be tried again. Useful for polling type operations
-func (r *Receiver) parallelComplete(ctx context.Context, err error, msg *ReceivedMessage) error {
+func (r *Receiver) complete(ctx context.Context, err error, msg *ReceivedMessage) {
 	ctx = context.WithoutCancel(ctx)
 	log := r.log.FromContext(ctx)
 	defer log.Close()
@@ -145,5 +124,4 @@ func (r *Receiver) parallelComplete(ctx context.Context, err error, msg *Receive
 		azerr := fmt.Errorf("Complete: failed to settle message: %w", NewAzbusError(err1))
 		log.Infof("%s", azerr)
 	}
-	return nil
 }

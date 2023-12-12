@@ -6,34 +6,7 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-// HandleReceivedMessageWithTracingContext only handles single ReceivedMessages. This is deprecated and will be superceded
-// by handleParallelReceivedMessageWithTracingContext.
-func (r *Receiver) HandleReceivedMessageWithTracingContext(ctx context.Context, message *ReceivedMessage, handler Handler) error {
-	log := r.log.FromContext(ctx)
-
-	log.Debugf("ContextFromReceivedMessage(): ApplicationProperties %v", message.ApplicationProperties)
-	var opts = []opentracing.StartSpanOption{}
-	carrier := opentracing.TextMapCarrier{}
-	for k, v := range message.ApplicationProperties {
-		value, ok := v.(string)
-		if ok {
-			carrier.Set(k, value)
-		}
-	}
-	spanCtx, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, carrier)
-	if err != nil {
-		log.Infof("HandleReceivedMessageWithTracingContext(): Unable to extract span context: %v", err)
-	} else {
-		opts = append(opts, opentracing.ChildOf(spanCtx))
-	}
-	span := opentracing.StartSpan("Handle message", opts...)
-	defer span.Finish()
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	return handler.Handle(ctx, message)
-}
-
-// handle tracing span for messages recieved via the parallelised ReceiveMessages.
-func (r *Receiver) handleParallelReceivedMessageWithTracingContext(ctx context.Context, message *ReceivedMessage, handler ParallelHandler) (Disposition, context.Context, error) {
+func (r *Receiver) handleReceivedMessageWithTracingContext(ctx context.Context, message *ReceivedMessage, handler Handler) (Disposition, context.Context, error) {
 	log := r.log.FromContext(ctx)
 
 	log.Debugf("ContextFromReceivedMessage(): ApplicationProperties %v", message.ApplicationProperties)
