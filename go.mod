@@ -43,9 +43,8 @@ require (
 
 require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
-	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/beorn7/perks v1.0.0 // indirect
-	github.com/google/uuid v1.3.1 // indirect
+	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
 	github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4 // indirect
 	github.com/prometheus/common v0.6.0 // indirect
