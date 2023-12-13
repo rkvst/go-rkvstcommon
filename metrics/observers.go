@@ -21,16 +21,8 @@ type LatencyObservers struct {
 	log             Logger
 }
 
-type LatencyOption func(*LatencyObservers)
-
-func WithLabel(label string, offset int) LatencyOption {
-	return func(l *LatencyObservers) {
-		l.labels = append(l.labels, latencyObserveOffset{label: label, offset: offset})
-	}
-}
-
 // NewLatencyObservers is specific to calculating the network latency and packet count.
-func NewLatencyObservers(m *Metrics, opts ...LatencyOption) LatencyObservers {
+func NewLatencyObservers(m *Metrics) LatencyObservers {
 
 	o := LatencyObservers{
 		log:             m.log,
@@ -38,9 +30,6 @@ func NewLatencyObservers(m *Metrics, opts ...LatencyOption) LatencyObservers {
 		requestsLatency: RequestsLatencyMetric(),
 		serviceName:     strings.ToLower(m.serviceName),
 		labels:          m.labels,
-	}
-	for _, opt := range opts {
-		opt(&o)
 	}
 
 	m.Register(o.requestsCounter, o.requestsLatency)
