@@ -23,11 +23,11 @@ type LatencyObservers struct {
 
 type LatencyOption func(*LatencyObservers)
 
-//func WithLabel(label string, offset int) LatencyOption {
-//	return func(l *LatencyObservers) {
-//		l.labels = append(l.labels, latencyObserveOffset{label: label, offset: offset})
-//	}
-//}
+func WithLabel(label string, offset int) LatencyOption {
+	return func(l *LatencyObservers) {
+		l.labels = append(l.labels, latencyObserveOffset{label: label, offset: offset})
+	}
+}
 
 // NewLatencyObservers is specific to calculating the network latency and packet count.
 func NewLatencyObservers(m *Metrics, opts ...LatencyOption) LatencyObservers {

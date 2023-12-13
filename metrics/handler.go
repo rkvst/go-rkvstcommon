@@ -31,14 +31,13 @@ func (m *Metrics) NewLatencyMetricsHandler(h http.Handler) http.Handler {
 		log := m.log.FromContext(r.Context())
 		defer log.Close()
 
+		log.Debugf("Request URL Path: '%s'", r.URL.Path)
 		fields := strings.Split(strings.Trim(r.URL.Path, "/ "), "/")
 		log.Debugf("Fields: %v (%d)", fields, len(fields))
 		if fields[0] != URLPrefix {
 			h.ServeHTTP(w, r)
 			return
 		}
-		log.Debugf("Request URL Path: '%s'", r.URL.Path)
-		// log.Debugf("Headers before processing: %v", r.Header)
 		// generate pre-process metrics here...
 		// nothing at the moment...
 
