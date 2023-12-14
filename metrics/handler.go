@@ -72,7 +72,7 @@ func (m *Metrics) NewLatencyMetricsHandler(h http.Handler) http.Handler {
 			tenant = strings.TrimPrefix(tenantID, tenantid.Prefix)
 			tenantid.DeleteTenantIDFromHeader(header)
 		}
-		observer.ObserveRequestsCount(r.URL, fields, statusCode, r.Method, tenant)
+		observer.ObserveRequestsCount(fields, r.Method, tenant)
 		observer.ObserveRequestsLatency(latency, fields, r.Method, tenant)
 	})
 }

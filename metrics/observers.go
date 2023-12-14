@@ -1,11 +1,13 @@
 package metrics
 
 import (
-	"net/url"
 	"strings"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+type Prometheus interface {
+}
 
 type latencyObserveOffset struct {
 	label  string
@@ -36,8 +38,7 @@ func NewLatencyObservers(m *Metrics) LatencyObservers {
 	return o
 }
 
-// statusCode is not of interest
-func (o *LatencyObservers) ObserveRequestsCount(_ *url.URL, fields []string, _ string, method string, tenant string) {
+func (o *LatencyObservers) ObserveRequestsCount(fields []string, method string, tenant string) {
 
 	for _, label := range o.labels {
 		if len(fields) > label.offset && fields[label.offset] == label.label {
