@@ -129,6 +129,10 @@ func NewFromEnvironment(log Logger, serviceName string, opts ...MetricsOption) *
 	return m
 }
 
+func (m *Metrics) String() string {
+	return m.serviceName
+}
+
 func (m *Metrics) Register(cs ...prometheus.Collector) {
 	m.registry.MustRegister(cs...)
 }
