@@ -18,9 +18,9 @@ func CosmosChargeMetric() *prometheus.GaugeVec {
 	return prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "archivist_cosmos_charge",
-			Help: "Cosmos charge by tenant, method and resource.",
+			Help: "Cosmos charge by method and resource.",
 		},
-		[]string{"tenant", "method", "resource"},
+		[]string{"method", "resource"},
 	)
 }
 
@@ -29,9 +29,9 @@ func CosmosDurationMetric() *prometheus.GaugeVec {
 	return prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "archivist_cosmos_duration",
-			Help: "Cosmos duration by tenant, method and resource.",
+			Help: "Cosmos duration by method and resource.",
 		},
-		[]string{"tenant", "method", "resource"},
+		[]string{"method", "resource"},
 	)
 }
 
@@ -40,9 +40,9 @@ func RequestsCounterMetric() *prometheus.CounterVec {
 	return prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "archivist_requests_total",
-			Help: "Total number of requests by method, tenant, service and resource.",
+			Help: "Total number of requests by method, service and resource.",
 		},
-		[]string{"method", "tenant", "service", "resource"},
+		[]string{"method", "service", "resource"},
 	)
 }
 
@@ -57,7 +57,7 @@ func RequestsLatencyMetric() *prometheus.HistogramVec {
 			Help:    "Histogram of time to reply to request.",
 			Buckets: []float64{.005, .01, .02, .04, .08, .16, .32},
 		},
-		[]string{"method", "tenant", "service", "resource"},
+		[]string{"method", "service", "resource"},
 	)
 }
 

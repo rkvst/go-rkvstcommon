@@ -38,23 +38,23 @@ func NewLatencyObservers(m *Metrics) LatencyObservers {
 	return o
 }
 
-func (o *LatencyObservers) ObserveRequestsCount(fields []string, method string, tenant string) {
+func (o *LatencyObservers) ObserveRequestsCount(fields []string, method string) {
 
 	for _, label := range o.labels {
 		if len(fields) > label.offset && fields[label.offset] == label.label {
-			o.log.Infof("Count %s: %s, %s", label.label, method, tenant)
-			o.requestsCounter.WithLabelValues(method, tenant, o.serviceName, label.label).Inc()
+			o.log.Infof("Count %s: %s", label.label, method)
+			o.requestsCounter.WithLabelValues(method, o.serviceName, label.label).Inc()
 			return
 		}
 	}
 }
 
-func (o *LatencyObservers) ObserveRequestsLatency(elapsed float64, fields []string, method string, tenant string) {
+func (o *LatencyObservers) ObserveRequestsLatency(elapsed float64, fields []string, method string) {
 
 	for _, label := range o.labels {
 		if len(fields) > label.offset && fields[label.offset] == label.label {
-			o.log.Infof("Latency %v %s: %s, %s", elapsed, label.label, method, tenant)
-			o.requestsLatency.WithLabelValues(method, tenant, o.serviceName, label.label).Observe(elapsed)
+			o.log.Infof("Latency %v %s: %s", elapsed, label.label, method)
+			o.requestsLatency.WithLabelValues(method, o.serviceName, label.label).Observe(elapsed)
 			return
 		}
 	}

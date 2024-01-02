@@ -3,9 +3,10 @@
 package mocks
 
 import (
-	context "context"
-
+	azservicebus "github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	azbus "github.com/datatrails/go-datatrails-common/azbus"
+
+	context "context"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -56,22 +57,26 @@ func (_c *Handler_Close_Call) RunAndReturn(run func()) *Handler_Close_Call {
 }
 
 // Handle provides a mock function with given fields: _a0, _a1
-func (_m *Handler) Handle(_a0 context.Context, _a1 *azbus.ReceivedMessage) (azbus.Disposition, context.Context, error) {
+func (_m *Handler) Handle(_a0 context.Context, _a1 *azservicebus.ReceivedMessage) (azbus.Disposition, context.Context, error) {
 	ret := _m.Called(_a0, _a1)
+
+	if len(ret) == 0 {
+		panic("no return value specified for Handle")
+	}
 
 	var r0 azbus.Disposition
 	var r1 context.Context
 	var r2 error
-	if rf, ok := ret.Get(0).(func(context.Context, *azbus.ReceivedMessage) (azbus.Disposition, context.Context, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *azservicebus.ReceivedMessage) (azbus.Disposition, context.Context, error)); ok {
 		return rf(_a0, _a1)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *azbus.ReceivedMessage) azbus.Disposition); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *azservicebus.ReceivedMessage) azbus.Disposition); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Get(0).(azbus.Disposition)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *azbus.ReceivedMessage) context.Context); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *azservicebus.ReceivedMessage) context.Context); ok {
 		r1 = rf(_a0, _a1)
 	} else {
 		if ret.Get(1) != nil {
@@ -79,7 +84,7 @@ func (_m *Handler) Handle(_a0 context.Context, _a1 *azbus.ReceivedMessage) (azbu
 		}
 	}
 
-	if rf, ok := ret.Get(2).(func(context.Context, *azbus.ReceivedMessage) error); ok {
+	if rf, ok := ret.Get(2).(func(context.Context, *azservicebus.ReceivedMessage) error); ok {
 		r2 = rf(_a0, _a1)
 	} else {
 		r2 = ret.Error(2)
@@ -95,14 +100,14 @@ type Handler_Handle_Call struct {
 
 // Handle is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *azbus.ReceivedMessage
+//   - _a1 *azservicebus.ReceivedMessage
 func (_e *Handler_Expecter) Handle(_a0 interface{}, _a1 interface{}) *Handler_Handle_Call {
 	return &Handler_Handle_Call{Call: _e.mock.On("Handle", _a0, _a1)}
 }
 
-func (_c *Handler_Handle_Call) Run(run func(_a0 context.Context, _a1 *azbus.ReceivedMessage)) *Handler_Handle_Call {
+func (_c *Handler_Handle_Call) Run(run func(_a0 context.Context, _a1 *azservicebus.ReceivedMessage)) *Handler_Handle_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*azbus.ReceivedMessage))
+		run(args[0].(context.Context), args[1].(*azservicebus.ReceivedMessage))
 	})
 	return _c
 }
@@ -112,7 +117,7 @@ func (_c *Handler_Handle_Call) Return(_a0 azbus.Disposition, _a1 context.Context
 	return _c
 }
 
-func (_c *Handler_Handle_Call) RunAndReturn(run func(context.Context, *azbus.ReceivedMessage) (azbus.Disposition, context.Context, error)) *Handler_Handle_Call {
+func (_c *Handler_Handle_Call) RunAndReturn(run func(context.Context, *azservicebus.ReceivedMessage) (azbus.Disposition, context.Context, error)) *Handler_Handle_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -120,6 +125,10 @@ func (_c *Handler_Handle_Call) RunAndReturn(run func(context.Context, *azbus.Rec
 // Open provides a mock function with given fields:
 func (_m *Handler) Open() error {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Open")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {

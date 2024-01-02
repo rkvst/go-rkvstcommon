@@ -27,6 +27,10 @@ func (_m *MsgReceiver) EXPECT() *MsgReceiver_Expecter {
 func (_m *MsgReceiver) GetAZClient() azbus.AZClient {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetAZClient")
+	}
+
 	var r0 azbus.AZClient
 	if rf, ok := ret.Get(0).(func() azbus.AZClient); ok {
 		r0 = rf()
@@ -67,6 +71,10 @@ func (_c *MsgReceiver_GetAZClient_Call) RunAndReturn(run func() azbus.AZClient) 
 // Listen provides a mock function with given fields:
 func (_m *MsgReceiver) Listen() error {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Listen")
+	}
 
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
@@ -109,6 +117,10 @@ func (_c *MsgReceiver_Listen_Call) RunAndReturn(run func() error) *MsgReceiver_L
 func (_m *MsgReceiver) Shutdown(_a0 context.Context) error {
 	ret := _m.Called(_a0)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Shutdown")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func(context.Context) error); ok {
 		r0 = rf(_a0)
@@ -150,6 +162,10 @@ func (_c *MsgReceiver_Shutdown_Call) RunAndReturn(run func(context.Context) erro
 // String provides a mock function with given fields:
 func (_m *MsgReceiver) String() string {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for String")
+	}
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {

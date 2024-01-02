@@ -3,9 +3,10 @@
 package mocks
 
 import (
-	context "context"
-
+	azservicebus "github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	azbus "github.com/datatrails/go-datatrails-common/azbus"
+
+	context "context"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -60,6 +61,10 @@ func (_c *MsgSender_Close_Call) RunAndReturn(run func(context.Context)) *MsgSend
 func (_m *MsgSender) GetAZClient() azbus.AZClient {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for GetAZClient")
+	}
+
 	var r0 azbus.AZClient
 	if rf, ok := ret.Get(0).(func() azbus.AZClient); ok {
 		r0 = rf()
@@ -101,6 +106,10 @@ func (_c *MsgSender_GetAZClient_Call) RunAndReturn(run func() azbus.AZClient) *M
 func (_m *MsgSender) Open() error {
 	ret := _m.Called()
 
+	if len(ret) == 0 {
+		panic("no return value specified for Open")
+	}
+
 	var r0 error
 	if rf, ok := ret.Get(0).(func() error); ok {
 		r0 = rf()
@@ -139,11 +148,15 @@ func (_c *MsgSender_Open_Call) RunAndReturn(run func() error) *MsgSender_Open_Ca
 }
 
 // Send provides a mock function with given fields: _a0, _a1
-func (_m *MsgSender) Send(_a0 context.Context, _a1 *azbus.OutMessage) error {
+func (_m *MsgSender) Send(_a0 context.Context, _a1 *azservicebus.Message) error {
 	ret := _m.Called(_a0, _a1)
 
+	if len(ret) == 0 {
+		panic("no return value specified for Send")
+	}
+
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, *azbus.OutMessage) error); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, *azservicebus.Message) error); ok {
 		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
@@ -159,14 +172,14 @@ type MsgSender_Send_Call struct {
 
 // Send is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 *azbus.OutMessage
+//   - _a1 *azservicebus.Message
 func (_e *MsgSender_Expecter) Send(_a0 interface{}, _a1 interface{}) *MsgSender_Send_Call {
 	return &MsgSender_Send_Call{Call: _e.mock.On("Send", _a0, _a1)}
 }
 
-func (_c *MsgSender_Send_Call) Run(run func(_a0 context.Context, _a1 *azbus.OutMessage)) *MsgSender_Send_Call {
+func (_c *MsgSender_Send_Call) Run(run func(_a0 context.Context, _a1 *azservicebus.Message)) *MsgSender_Send_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*azbus.OutMessage))
+		run(args[0].(context.Context), args[1].(*azservicebus.Message))
 	})
 	return _c
 }
@@ -176,7 +189,7 @@ func (_c *MsgSender_Send_Call) Return(_a0 error) *MsgSender_Send_Call {
 	return _c
 }
 
-func (_c *MsgSender_Send_Call) RunAndReturn(run func(context.Context, *azbus.OutMessage) error) *MsgSender_Send_Call {
+func (_c *MsgSender_Send_Call) RunAndReturn(run func(context.Context, *azservicebus.Message) error) *MsgSender_Send_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -184,6 +197,10 @@ func (_c *MsgSender_Send_Call) RunAndReturn(run func(context.Context, *azbus.Out
 // String provides a mock function with given fields:
 func (_m *MsgSender) String() string {
 	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for String")
+	}
 
 	var r0 string
 	if rf, ok := ret.Get(0).(func() string); ok {

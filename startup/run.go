@@ -25,7 +25,7 @@ func Run(serviceName string, run Runner) {
 		}
 		err := run(serviceName, log)
 		if err != nil {
-			log.Infof("Error terminating: %v", err)
+			log.Infof("Error at startup: %v", err)
 			exitCode = 1
 		}
 		return exitCode
