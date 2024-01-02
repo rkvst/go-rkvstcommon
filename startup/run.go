@@ -10,7 +10,7 @@ import (
 	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
-type Runner func(string, *logger.WrappedLogger) error
+type Runner func(string, logger.Logger) error
 
 // defers do not work in main() because of the os.Exit(
 func Run(serviceName string, run Runner) {
