@@ -1,3 +1,5 @@
+// +build azurite
+
 package azblob
 
 import (

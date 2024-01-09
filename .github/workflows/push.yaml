@@ -39,4 +39,5 @@ jobs:
       - name: Build
         run: |
           task build
+          task test
 
