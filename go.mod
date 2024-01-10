@@ -38,7 +38,7 @@ require (
 	go.uber.org/zap v1.25.0
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d
-	google.golang.org/grpc v1.57.0
+	google.golang.org/grpc v1.57.1
 )
 
 require (
