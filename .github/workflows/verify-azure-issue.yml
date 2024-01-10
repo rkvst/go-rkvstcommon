@@ -1,6 +1,6 @@
 name: "Verify Linked Task"
 
-on: [pull_request, workflow_call]
+on: [pull_request]
   
 # For details refer to https://github.com/tim-actions/commit-message-checker-with-regex
 jobs:
