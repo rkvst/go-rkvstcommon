@@ -6,6 +6,8 @@ import (
 	"context"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 
 	"github.com/datatrails/go-datatrails-common/logger"
 )
@@ -56,7 +58,7 @@ type ListerResponse struct {
 	StatusCode int // For If- header fails, err can be nil and code can be 304
 	Status     string
 
-	Items []*azStorageBlob.BlobItemInternal
+	Items []*container.BlobItem
 }
 
 func (azp *Storer) List(ctx context.Context, opts ...Option) (*ListerResponse, error) {
@@ -81,22 +83,31 @@ func (azp *Storer) List(ctx context.Context, opts ...Option) (*ListerResponse, e
 	// TODO: v1.21 feature which would be great
 	// if options.listDelim != "" {
 	// }
-	r := &ListerResponse{}
-	pager := azp.containerClient.ListBlobsFlat(&o)
+	r := &ListerResponse{Items: []*container.BlobItem{}}
+
+	// blob listings are returned across multiple pages
+	pager := azp.containerClient.NewListBlobsFlatPager(azp.container, &o)
 	if !pager.NextPage(ctx) {
 		return r, nil
 	}
 	resp := pager.PageResponse()
 	r.Status = resp.RawResponse.Status
 	r.StatusCode = resp.RawResponse.StatusCode
-
 	if resp.Prefix != nil {
 		r.Prefix = *resp.Prefix
 	}
 
-	// Note: we pass on the azure type otherwise we would be copying for no good
-	// reason. let the caller decided how to deal with that
-	r.Items = resp.Segment.BlobItems
+	// continue fetching pages until no more remain
+	for pager.More() {
+		// advance to the next page
+		page, err := pager.NextPage(ctx)
+		if err != nil {
+			return nil, err
+		}
 
+		// Note: we pass on the azure type otherwise we would be copying for no good
+		// reason. let the caller decided how to deal with that
+		r.Items = append(r.Items, resp.Segment.BlobItems...)
+	}
 	return r, nil
 }

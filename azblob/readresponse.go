@@ -8,6 +8,7 @@ import (
 	"time"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/datatrails/go-datatrails-common/scannedstatus"
 )
@@ -24,7 +25,7 @@ type ReaderResponse struct {
 	ScannedBadReason  string
 	ScannedTimestamp  string
 
-	BlobClient *azStorageBlob.BlobClient
+	BlobClient *blob.Client
 
 	// The following are copied as appropriate from the azure sdk response.
 	// See also WriterResponse

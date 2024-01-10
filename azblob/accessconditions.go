@@ -4,11 +4,12 @@ import (
 	"errors"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 )
 
-func storerOptionConditions(options *StorerOptions) (azStorageBlob.BlobAccessConditions, error) {
+func storerOptionConditions(options *StorerOptions) (blob.AccessConditions, error) {
 
-	var blobAccessConditions azStorageBlob.BlobAccessConditions
+	var blobAccessConditions blob.AccessConditions
 	if options.leaseID == "" && options.etagCondition == EtagNotUsed {
 		return blobAccessConditions, nil
 	}

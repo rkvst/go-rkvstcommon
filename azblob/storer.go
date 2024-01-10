@@ -7,12 +7,14 @@ import (
 	"fmt"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
 	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // so we dont have to import azure blob package anywhere else
-type ContainerClient = azStorageBlob.ContainerClient
-type ServiceClient = azStorageBlob.ServiceClient
+type ContainerClient = container.Client
+type ServiceClient = service.Client
 type SharedKeyCredential = azStorageBlob.SharedKeyCredential
 
 // Storer implements usage of Reader/Writer backed by azblob

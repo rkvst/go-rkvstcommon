@@ -10,6 +10,8 @@ import (
 	"time"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/lease"
 
 	"github.com/datatrails/go-datatrails-common/logger"
 )
@@ -83,7 +85,7 @@ func (azp *Storer) AcquireLeaseRenewable(
 func (azp *Storer) acquireLease(
 	ctx context.Context, objectname string, leaseTimeout int32,
 ) (
-	*azStorageBlob.BlobAcquireLeaseResponse, *azStorageBlob.BlobLeaseClient, error,
+	*lease.BlobAcquireResponse, *blob.Client, error,
 ) {
 	logger.Sugar.Debugf("acquireLease: %v", objectname)
 
