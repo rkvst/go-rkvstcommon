@@ -182,7 +182,7 @@ func (azp *Storer) writeStream(
 		return nil, ErrorFromError(err)
 
 	}
-	return uploadStreamWriteResponse(r), nil
+	return uploadWriteResponse(r), nil
 }
 
 func (azp *Storer) streamReader(

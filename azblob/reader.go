@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
 	"github.com/datatrails/go-datatrails-common/logger"
 )
 
@@ -59,7 +60,7 @@ func NewReaderNoAuth(accountName string, url string, container string) (Reader, 
 		url,
 		container,
 	)
-	azp.serviceClient, err = azStorageBlob.NewServiceClientWithNoCredential(
+	azp.serviceClient, err = service.NewClientWithNoCredential(
 		url,
 		nil,
 	)
@@ -67,11 +68,7 @@ func NewReaderNoAuth(accountName string, url string, container string) (Reader, 
 		logger.Sugar.Infof("unable to create serviceclient %s: %v", azp.containerURL, err)
 		return nil, err
 	}
-	azp.containerClient, err = azp.serviceClient.NewContainerClient(container)
-	if err != nil {
-		logger.Sugar.Infof("unable to create containerclient %s: %v", container, err)
-		return nil, err
-	}
+	azp.containerClient = azp.serviceClient.NewContainerClient(container)
 
 	return azp, nil
 }

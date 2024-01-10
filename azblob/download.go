@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
 
 	"github.com/datatrails/go-datatrails-common/logger"
 )
@@ -31,11 +32,7 @@ func (azp *Storer) getTags(
 	var err error
 	logger.Sugar.Debugf("getTags BlockBlob URL %s", identity)
 
-	blobClient, err := azp.containerClient.NewBlobClient(identity)
-	if err != nil {
-		logger.Sugar.Debugf("getTags BlockBlob Client %s error: %v", identity, err)
-		return nil, ErrorFromError(err)
-	}
+	blobClient := azp.containerClient.NewBlobClient(identity)
 
 	resp, err := blobClient.GetTags(ctx, nil)
 	if err != nil {
@@ -55,13 +52,11 @@ func (azp *Storer) getTags(
 func (azp *Storer) getMetadata(
 	ctx context.Context,
 	identity string,
-) (map[string]string, error) {
+) (map[string]*string, error) {
 	logger.Sugar.Debugf("getMetadata BlockBlob URL %s", identity)
 
-	blobClient, err := azp.containerClient.NewBlobClient(identity)
-	if err != nil {
-		return nil, ErrorFromError(err)
-	}
+	blobClient := azp.containerClient.NewBlobClient(identity)
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	resp, err := blobClient.GetProperties(ctx, nil)
@@ -143,16 +138,14 @@ func (azp *Storer) Reader(
 	}
 
 	logger.Sugar.Debugf("Creating New io.Reader")
-	resp.BlobClient, err = azp.containerClient.NewBlobClient(identity)
-	if err != nil {
-		return nil, ErrorFromError(err)
-	}
-	countToEnd := int64(azStorageBlob.CountToEnd)
-	get, err := resp.BlobClient.Download(
+	resp.BlobClient = azp.containerClient.NewBlobClient(identity)
+	get, err := resp.BlobClient.DownloadStream(
 		ctx,
-		&azStorageBlob.BlobDownloadOptions{
-			BlobAccessConditions: &blobAccessConditions,
-			Count:                &countToEnd,
+		&blob.DownloadStreamOptions{
+			AccessConditions: &blobAccessConditions,
+			Range: blob.HTTPRange{
+				Count: int64(blob.CountToEnd),
+			},
 		},
 	)
 
@@ -173,10 +166,7 @@ func (azp *Storer) Reader(
 		if options.getMetadata == BothMetadataAndBlob {
 			_ = readerResponseMetadata(resp, resp.Metadata) // the parse error is benign
 		}
-	}
-
-	if get.RawResponse != nil {
-		resp.Reader = get.Body(nil)
+		resp.Reader = get.Body
 	}
 	return resp, err
 }

@@ -4,7 +4,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
 )
 
 type WriteResponse struct {
@@ -35,7 +37,7 @@ func normaliseWriteResponseErr(err error, wr *WriteResponse) {
 		return
 	}
 
-	var terr *azStorageBlob.StorageError
+	var terr *azcore.ResponseError
 	if !errors.As(err, &terr) {
 		return
 	}
@@ -50,12 +52,13 @@ func normaliseWriteResponseErr(err error, wr *WriteResponse) {
 	}
 }
 
-func uploadStreamWriteResponse(r azStorageBlob.BlockBlobCommitBlockListResponse) *WriteResponse {
+func uploadWriteResponse(r blockblob.CommitBlockListResponse) *WriteResponse {
 	w := WriteResponse{
 		ETag: r.ETag,
 	}
 	w.Status = r.RawResponse.Status
 	w.StatusCode = r.RawResponse.StatusCode
+	w.LastModified = r.LastModified
 	value, ok := r.RawResponse.Header[xMsErrorCodeHeader]
 	if ok && len(value) > 0 {
 		w.XMsErrorCode = value[0]
@@ -64,7 +67,7 @@ func uploadStreamWriteResponse(r azStorageBlob.BlockBlobCommitBlockListResponse)
 	return &w
 }
 
-func uploadWriteResponse(r azStorageBlob.BlockBlobUploadResponse) *WriteResponse {
+func uploadUploadResponse(r blockblob.UploadResponse) *WriteResponse {
 	w := WriteResponse{
 		ETag: r.ETag,
 	}

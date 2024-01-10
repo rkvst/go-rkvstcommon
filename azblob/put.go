@@ -6,6 +6,7 @@ import (
 	"io"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blockblob"
 	"github.com/datatrails/go-datatrails-common/logger"
 )
 
@@ -54,24 +55,20 @@ func (azp *Storer) putBlob(
 		return nil, err
 	}
 
-	blockBlobClient, err := azp.containerClient.NewBlockBlobClient(identity)
-	if err != nil {
-		logger.Sugar.Infof("Cannot get block blob client blob: %v", err)
-		return nil, ErrorFromError(err)
-	}
+	blockBlobClient := azp.containerClient.NewBlockBlobClient(identity)
 
 	r, err := blockBlobClient.Upload(
 		ctx,
 		body,
-		&azStorageBlob.BlockBlobUploadOptions{
-			BlobAccessConditions: &blobAccessConditions,
-			Metadata:             options.metadata,
-			TagsMap:              options.tags,
+		&blockblob.UploadOptions{
+			AccessConditions: &blobAccessConditions,
+			Metadata:         options.metadata,
+			Tags:             options.tags,
 		},
 	)
 	if err != nil {
 		logger.Sugar.Infof("Cannot upload blob: %v", err)
 		return nil, ErrorFromError(err)
 	}
-	return uploadWriteResponse(r), nil
+	return uploadUploadResponse(r), nil
 }

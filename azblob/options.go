@@ -34,7 +34,7 @@ func (g GetMetadata) String() string {
 // StorerOptions - optional args for specifying optional behaviour
 type StorerOptions struct {
 	leaseID        string
-	metadata       map[string]string
+	metadata       map[string]*string
 	tags           map[string]string
 	getMetadata    GetMetadata
 	getTags        bool
@@ -150,7 +150,7 @@ func WithLeaseID(leaseID string) Option {
 }
 
 // WithMetadata specifies metadata to add - Write() only
-func WithMetadata(metadata map[string]string) Option {
+func WithMetadata(metadata map[string]*string) Option {
 	return func(a *StorerOptions) {
 		a.metadata = metadata
 	}

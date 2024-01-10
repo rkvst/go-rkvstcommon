@@ -6,6 +6,8 @@ import (
 	"os"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
 	"github.com/datatrails/go-datatrails-common/logger"
 )
 
@@ -47,12 +49,12 @@ func NewDevConfigFromEnv() DevConfig {
 }
 
 // GetContainerClient returns the underlying container client
-func (s *Storer) GetContainerClient() *azStorageBlob.ContainerClient {
+func (s *Storer) GetContainerClient() *container.Client {
 	return s.containerClient
 }
 
 // GetServiceClient returns the underlying service client
-func (s *Storer) GetServiceClient() *azStorageBlob.ServiceClient {
+func (s *Storer) GetServiceClient() *service.Client {
 	return s.serviceClient
 }
 
