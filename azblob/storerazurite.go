@@ -106,50 +106,6 @@ func NewDev(cfg DevConfig, container string) (*Storer, error) {
 	return azp, nil
 }
 
-// NewDevNoCred is a client that has no credentials
-func NewDevNoCred(cfg DevConfig, container string) (*Storer, error) {
-	logger.Sugar.Infof(
-		"Attempt environment auth with accountName: %s, for container: %s",
-		cfg.AccountName, container,
-	)
-
-	var err error
-
-	if cfg.AccountName == "" || cfg.URL == "" {
-		return nil, errors.New("missing connection configuration variables")
-	}
-
-	azp := &Storer{
-		AccountName:   cfg.AccountName,
-		ResourceGroup: azuriteResourceGroup, // just for logging
-		Subscription:  azuriteSubscription,  // just for logging
-		Container:     container,
-		credential:    nil,
-		rootURL:       cfg.URL,
-	}
-
-	azp.containerURL = fmt.Sprintf(
-		"%s%s",
-		cfg.URL,
-		container,
-	)
-	azp.serviceClient, err = azStorageBlob.NewServiceClientWithNoCredential(
-		cfg.URL,
-		nil,
-	)
-	if err != nil {
-		logger.Sugar.Infof("unable to create serviceclient %s: %v", azp.containerURL, err)
-		return nil, err
-	}
-	azp.containerClient, err = azp.serviceClient.NewContainerClient(container)
-	if err != nil {
-		logger.Sugar.Infof("unable to create containerclient %s: %v", container, err)
-		return nil, err
-	}
-
-	return azp, nil
-}
-
 // devVarWithDefault reads the key from env.
 // If key is not set, returns  the defaultValue.
 func devVarWithDefault(key string, defaultValue string) string {
