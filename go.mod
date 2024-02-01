@@ -22,21 +22,26 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.12
 	github.com/KimMachineGun/automemlimit v0.2.6
 	github.com/ethereum/go-ethereum v0.0.0-20221208112643-d318a5aa973a
+	github.com/fxamacker/cbor/v2 v2.5.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.3.1
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.17.1
+	github.com/ldclabs/cose/go v0.0.0-20221214142927-d22c1cfc2154
+	github.com/lestrrat-go/jwx v1.2.28
+	github.com/nuts-foundation/go-did v0.6.4
 	github.com/opentracing-contrib/go-stdlib v1.0.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/openzipkin-contrib/zipkin-go-opentracing v0.5.0
 	github.com/openzipkin/zipkin-go v0.4.2
 	github.com/prometheus/client_golang v1.11.1
 	github.com/stretchr/testify v1.8.4
+	github.com/veraison/go-cose v1.1.0
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.25.0
-	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+	golang.org/x/sync v0.1.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d
 	google.golang.org/grpc v1.57.1
 )
@@ -45,10 +50,20 @@ require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
+	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
+	github.com/goccy/go-json v0.10.2 // indirect
+	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
+	github.com/lestrrat-go/blackmagic v1.0.2 // indirect
+	github.com/lestrrat-go/httpcc v1.0.1 // indirect
+	github.com/lestrrat-go/iter v1.0.2 // indirect
+	github.com/lestrrat-go/option v1.0.1 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.1 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.26.0 // indirect
 	github.com/prometheus/procfs v0.6.0 // indirect
+	github.com/shengdoushi/base58 v1.0.0 // indirect
+	github.com/x448/float16 v0.8.4 // indirect
 )
 
 require (
