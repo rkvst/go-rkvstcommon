@@ -27,3 +27,6 @@ func (kce *CBORCodec) UnmarshalCBOR(value []byte) ([]any, error) {
 
 	return decoded, err
 }
+func (kce *CBORCodec) UnmarshalInto(b []byte, decoded interface{}) error {
+	return kce.cborCfg.DecMode.Unmarshal(b, decoded)
+}
