@@ -120,8 +120,6 @@ func MarshalCBOR(message *cose.Sign1Message) ([]byte, error) {
 // UnmarshalCBOR unmarshals a cbor encoded cose_Sign1 message
 func UnmarshalCBOR(message []byte) (*cose.Sign1Message, error) {
 
-	logger.Sugar.Infof("UnmarshalCBOR: message: %v", message)
-
 	var unmarshaledMessage cose.Sign1Message
 	err := unmarshaledMessage.UnmarshalCBOR(message)
 	if err != nil {
