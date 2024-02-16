@@ -23,39 +23,6 @@ func (_m *MsgReceiver) EXPECT() *MsgReceiver_Expecter {
 	return &MsgReceiver_Expecter{mock: &_m.Mock}
 }
 
-// Close provides a mock function with given fields: _a0
-func (_m *MsgReceiver) Close(_a0 context.Context) {
-	_m.Called(_a0)
-}
-
-// MsgReceiver_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
-type MsgReceiver_Close_Call struct {
-	*mock.Call
-}
-
-// Close is a helper method to define mock.On call
-//   - _a0 context.Context
-func (_e *MsgReceiver_Expecter) Close(_a0 interface{}) *MsgReceiver_Close_Call {
-	return &MsgReceiver_Close_Call{Call: _e.mock.On("Close", _a0)}
-}
-
-func (_c *MsgReceiver_Close_Call) Run(run func(_a0 context.Context)) *MsgReceiver_Close_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context))
-	})
-	return _c
-}
-
-func (_c *MsgReceiver_Close_Call) Return() *MsgReceiver_Close_Call {
-	_c.Call.Return()
-	return _c
-}
-
-func (_c *MsgReceiver_Close_Call) RunAndReturn(run func(context.Context)) *MsgReceiver_Close_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetAZClient provides a mock function with given fields:
 func (_m *MsgReceiver) GetAZClient() azbus.AZClient {
 	ret := _m.Called()
@@ -134,47 +101,6 @@ func (_c *MsgReceiver_Listen_Call) Return(_a0 error) *MsgReceiver_Listen_Call {
 }
 
 func (_c *MsgReceiver_Listen_Call) RunAndReturn(run func() error) *MsgReceiver_Listen_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// Open provides a mock function with given fields:
-func (_m *MsgReceiver) Open() error {
-	ret := _m.Called()
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MsgReceiver_Open_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Open'
-type MsgReceiver_Open_Call struct {
-	*mock.Call
-}
-
-// Open is a helper method to define mock.On call
-func (_e *MsgReceiver_Expecter) Open() *MsgReceiver_Open_Call {
-	return &MsgReceiver_Open_Call{Call: _e.mock.On("Open")}
-}
-
-func (_c *MsgReceiver_Open_Call) Run(run func()) *MsgReceiver_Open_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MsgReceiver_Open_Call) Return(_a0 error) *MsgReceiver_Open_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MsgReceiver_Open_Call) RunAndReturn(run func() error) *MsgReceiver_Open_Call {
 	_c.Call.Return(run)
 	return _c
 }

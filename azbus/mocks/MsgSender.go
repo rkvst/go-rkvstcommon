@@ -3,10 +3,9 @@
 package mocks
 
 import (
-	azservicebus "github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
-	azbus "github.com/datatrails/go-datatrails-common/azbus"
-
 	context "context"
+
+	azbus "github.com/datatrails/go-datatrails-common/azbus"
 
 	mock "github.com/stretchr/testify/mock"
 )
@@ -139,20 +138,13 @@ func (_c *MsgSender_Open_Call) RunAndReturn(run func() error) *MsgSender_Open_Ca
 	return _c
 }
 
-// Send provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MsgSender) Send(_a0 context.Context, _a1 []byte, _a2 ...azbus.OutMessageOption) error {
-	_va := make([]interface{}, len(_a2))
-	for _i := range _a2 {
-		_va[_i] = _a2[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, _a0, _a1)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// Send provides a mock function with given fields: _a0, _a1
+func (_m *MsgSender) Send(_a0 context.Context, _a1 *azbus.OutMessage) error {
+	ret := _m.Called(_a0, _a1)
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, []byte, ...azbus.OutMessageOption) error); ok {
-		r0 = rf(_a0, _a1, _a2...)
+	if rf, ok := ret.Get(0).(func(context.Context, *azbus.OutMessage) error); ok {
+		r0 = rf(_a0, _a1)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -167,22 +159,14 @@ type MsgSender_Send_Call struct {
 
 // Send is a helper method to define mock.On call
 //   - _a0 context.Context
-//   - _a1 []byte
-//   - _a2 ...azbus.OutMessageOption
-func (_e *MsgSender_Expecter) Send(_a0 interface{}, _a1 interface{}, _a2 ...interface{}) *MsgSender_Send_Call {
-	return &MsgSender_Send_Call{Call: _e.mock.On("Send",
-		append([]interface{}{_a0, _a1}, _a2...)...)}
+//   - _a1 *azbus.OutMessage
+func (_e *MsgSender_Expecter) Send(_a0 interface{}, _a1 interface{}) *MsgSender_Send_Call {
+	return &MsgSender_Send_Call{Call: _e.mock.On("Send", _a0, _a1)}
 }
 
-func (_c *MsgSender_Send_Call) Run(run func(_a0 context.Context, _a1 []byte, _a2 ...azbus.OutMessageOption)) *MsgSender_Send_Call {
+func (_c *MsgSender_Send_Call) Run(run func(_a0 context.Context, _a1 *azbus.OutMessage)) *MsgSender_Send_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]azbus.OutMessageOption, len(args)-2)
-		for i, a := range args[2:] {
-			if a != nil {
-				variadicArgs[i] = a.(azbus.OutMessageOption)
-			}
-		}
-		run(args[0].(context.Context), args[1].([]byte), variadicArgs...)
+		run(args[0].(context.Context), args[1].(*azbus.OutMessage))
 	})
 	return _c
 }
@@ -192,65 +176,7 @@ func (_c *MsgSender_Send_Call) Return(_a0 error) *MsgSender_Send_Call {
 	return _c
 }
 
-func (_c *MsgSender_Send_Call) RunAndReturn(run func(context.Context, []byte, ...azbus.OutMessageOption) error) *MsgSender_Send_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SendMsg provides a mock function with given fields: _a0, _a1, _a2
-func (_m *MsgSender) SendMsg(_a0 context.Context, _a1 azservicebus.Message, _a2 ...azbus.OutMessageOption) error {
-	_va := make([]interface{}, len(_a2))
-	for _i := range _a2 {
-		_va[_i] = _a2[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, _a0, _a1)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 error
-	if rf, ok := ret.Get(0).(func(context.Context, azservicebus.Message, ...azbus.OutMessageOption) error); ok {
-		r0 = rf(_a0, _a1, _a2...)
-	} else {
-		r0 = ret.Error(0)
-	}
-
-	return r0
-}
-
-// MsgSender_SendMsg_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SendMsg'
-type MsgSender_SendMsg_Call struct {
-	*mock.Call
-}
-
-// SendMsg is a helper method to define mock.On call
-//   - _a0 context.Context
-//   - _a1 azservicebus.Message
-//   - _a2 ...azbus.OutMessageOption
-func (_e *MsgSender_Expecter) SendMsg(_a0 interface{}, _a1 interface{}, _a2 ...interface{}) *MsgSender_SendMsg_Call {
-	return &MsgSender_SendMsg_Call{Call: _e.mock.On("SendMsg",
-		append([]interface{}{_a0, _a1}, _a2...)...)}
-}
-
-func (_c *MsgSender_SendMsg_Call) Run(run func(_a0 context.Context, _a1 azservicebus.Message, _a2 ...azbus.OutMessageOption)) *MsgSender_SendMsg_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]azbus.OutMessageOption, len(args)-2)
-		for i, a := range args[2:] {
-			if a != nil {
-				variadicArgs[i] = a.(azbus.OutMessageOption)
-			}
-		}
-		run(args[0].(context.Context), args[1].(azservicebus.Message), variadicArgs...)
-	})
-	return _c
-}
-
-func (_c *MsgSender_SendMsg_Call) Return(_a0 error) *MsgSender_SendMsg_Call {
-	_c.Call.Return(_a0)
-	return _c
-}
-
-func (_c *MsgSender_SendMsg_Call) RunAndReturn(run func(context.Context, azservicebus.Message, ...azbus.OutMessageOption) error) *MsgSender_SendMsg_Call {
+func (_c *MsgSender_Send_Call) RunAndReturn(run func(context.Context, *azbus.OutMessage) error) *MsgSender_Send_Call {
 	_c.Call.Return(run)
 	return _c
 }

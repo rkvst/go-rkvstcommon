@@ -6,9 +6,10 @@ import (
 
 type MsgSender interface {
 	Open() error
-	Send(context.Context, []byte, ...OutMessageOption) error
-	SendMsg(context.Context, OutMessage, ...OutMessageOption) error
 	Close(context.Context)
+
+	Send(context.Context, *OutMessage) error
 	String() string
+
 	GetAZClient() AZClient
 }

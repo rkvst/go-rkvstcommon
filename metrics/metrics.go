@@ -128,9 +128,6 @@ func (m *Metrics) Port() string {
 	return ""
 }
 
-// The following code is only for restproxy endpoints and allows the propagation of
-// the tenant Id from the underlying GRPC service.
-
 // NewPromHandler - this handler is used on the endpoint that serves metrics endpoint
 // which is provided on a different port to the service.
 // The default InstrumentMetricHandler is suppressed.

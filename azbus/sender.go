@@ -12,15 +12,6 @@ import (
 	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
-// so we dont have to import the azure repo everywhere
-type OutMessage = azservicebus.Message
-
-func NewOutMessage(data []byte) OutMessage {
-	return azservicebus.Message{
-		Body: data,
-	}
-}
-
 // SenderConfig configuration for an azure servicebus namespace and queue
 type SenderConfig struct {
 	ConnectionString string
@@ -109,20 +100,8 @@ func (s *Sender) Open() error {
 	return nil
 }
 
-type OutMessageOption func(*OutMessage)
-
-func WithProperty(key string, value any) OutMessageOption {
-	return func(o *OutMessage) {
-		o.ApplicationProperties[key] = value
-	}
-}
-
-func (s *Sender) Send(ctx context.Context, msg []byte, opts ...OutMessageOption) error {
-	return s.SendMsg(ctx, NewOutMessage(msg), opts...)
-}
-
 // Send submits a message to the queue. Ignores cancellation.
-func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMessageOption) error {
+func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 
 	// Without this fix eventsourcepoller and similar services repeatedly context cancel and repeatedly
 	// restart.
@@ -141,11 +120,13 @@ func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMes
 	log := s.log.FromContext(ctx)
 	defer log.Close()
 
-	err = s.Open()
-	if err != nil {
-		return err
+	// boots & braces
+	if s.sender == nil {
+		err = s.Open()
+		if err != nil {
+			return err
+		}
 	}
-
 	size := int64(len(message.Body))
 	log.Debugf("%s: Msg Sized %d limit %d", s, size, s.maxMessageSizeInBytes)
 	if size > s.maxMessageSizeInBytes {
@@ -153,15 +134,10 @@ func (s *Sender) SendMsg(ctx context.Context, message OutMessage, opts ...OutMes
 		return fmt.Errorf("%s: Msg Sized %d > limit %d :%w", s, size, s.maxMessageSizeInBytes, ErrMessageOversized)
 	}
 	now := time.Now()
-	if message.ApplicationProperties == nil {
-		message.ApplicationProperties = make(map[string]any)
-	}
-	for _, opt := range opts {
-		opt(&message)
-	}
-	s.UpdateSendingMesssageForSpan(ctx, &message, span)
 
-	err = s.sender.SendMessage(ctx, &message, nil)
+	s.updateSendingMesssageForSpan(ctx, message, span)
+
+	err = s.sender.SendMessage(ctx, message, nil)
 	if err != nil {
 		azerr := fmt.Errorf("Send failed in %s: %w", time.Since(now), NewAzbusError(err))
 		log.Infof("%s", azerr)

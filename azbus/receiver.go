@@ -14,12 +14,11 @@ var (
 	ErrNoHandler = errors.New("no handler defined")
 )
 
-// so we dont have to import the azure repo everywhere
-type ReceivedMessage = azservicebus.ReceivedMessage
-
 // Handler processes a ReceivedMessage.
 type Handler interface {
 	Handle(context.Context, *ReceivedMessage) (Disposition, context.Context, error)
+	Open() error
+	Close()
 }
 
 const (
@@ -44,18 +43,6 @@ const (
 )
 
 // Settings for Receivers:
-//
-//     NumberOfReceivedMessages  int
-//
-//         The number of messages fetched simultaneously from azure servicebus.
-//         Currently this figure cannot be high (suggest <6) as the peeklock
-//         timeout for all msgs starts as soon as fetched. This means that
-//         if the processing of a previous msg fetched takes a long time
-//         because of send retries then following messages start with some of
-//         their peeklock time used up. Currently we have 60s to process all the
-//         messages. This can be fixed by setting RenewMessageLock to true.
-//         Some services start up multiple handlers and this setting should be 1
-//         in this case.
 //
 //     RenewMessageLock bool
 //
@@ -82,9 +69,8 @@ type ReceiverConfig struct {
 	SubscriptionName string
 
 	// See azbus/receiver.go
-	NumberOfReceivedMessages int
-	RenewMessageLock         bool
-	RenewMessageTime         time.Duration
+	RenewMessageLock bool
+	RenewMessageTime time.Duration
 
 	// If a deadletter receiver then this is true
 	Deadletter bool
@@ -125,7 +111,15 @@ func WithRenewalTime(t int) ReceiverOption {
 	}
 }
 
+// NewReciver creates a new Receiver that will process a number of messages simultaneously.
+// Each handler executes in its own goroutine.
 func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiver {
+	var r Receiver
+	return newReceiver(&r, log, cfg, opts...)
+}
+
+// function outlining (look it up).
+func newReceiver(r *Receiver, log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiver {
 	var options *azservicebus.ReceiverOptions
 	if cfg.Deadletter {
 		options = &azservicebus.ReceiverOptions{
@@ -134,15 +128,13 @@ func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiv
 		}
 	}
 
-	r := Receiver{
-		Cfg:      cfg,
-		azClient: NewAZClient(cfg.ConnectionString),
-		options:  options,
-		handlers: []Handler{},
-	}
+	r.Cfg = cfg
+	r.azClient = NewAZClient(cfg.ConnectionString)
+	r.options = options
+	r.handlers = []Handler{}
 	r.log = log.WithIndex("receiver", r.String())
 	for _, opt := range opts {
-		opt(&r)
+		opt(r)
 	}
 
 	// Set this to a default that corresponds to the az servicebus default peek-lock timeout
@@ -150,7 +142,7 @@ func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiv
 		r.Cfg.RenewMessageTime = RenewalTime
 	}
 
-	return &r
+	return r
 }
 
 func (r *Receiver) GetAZClient() AZClient {
@@ -232,28 +224,19 @@ func (r *Receiver) renewMessageLock(ctx context.Context, count int, msg *Receive
 
 func (r *Receiver) receiveMessages() error {
 
-	if len(r.handlers) != r.Cfg.NumberOfReceivedMessages {
-		return fmt.Errorf("%s: Number of Handlers %d is not equal to %d", r, len(r.handlers), r.Cfg.NumberOfReceivedMessages)
-	}
-
-	err := r.Open()
-	if err != nil {
-		azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
-		r.log.Infof("%s", azerr)
-		return azerr
-	}
+	numberOfReceivedMessages := len(r.handlers)
 	r.log.Debugf(
 		"NumberOfReceivedMessages %d, RenewMessageLock: %v",
-		r.Cfg.NumberOfReceivedMessages,
+		numberOfReceivedMessages,
 		r.Cfg.RenewMessageLock,
 	)
 
 	// Start all the workers
-	msgs := make(chan *ReceivedMessage, r.Cfg.NumberOfReceivedMessages)
+	msgs := make(chan *ReceivedMessage, numberOfReceivedMessages)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var wg sync.WaitGroup
-	for i := 0; i < r.Cfg.NumberOfReceivedMessages; i++ {
+	for i := range numberOfReceivedMessages {
 		go func(rctx context.Context, ii int, rr *Receiver) {
 			rr.log.Debugf("Start worker %d", ii)
 			for {
@@ -289,7 +272,7 @@ func (r *Receiver) receiveMessages() error {
 	for {
 		var err error
 		var messages []*ReceivedMessage
-		messages, err = r.receiver.ReceiveMessages(ctx, r.Cfg.NumberOfReceivedMessages, nil)
+		messages, err = r.receiver.ReceiveMessages(ctx, numberOfReceivedMessages, nil)
 		if err != nil {
 			azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
 			r.log.Infof("%s", azerr)
@@ -298,7 +281,7 @@ func (r *Receiver) receiveMessages() error {
 		total := len(messages)
 		r.log.Debugf("total messages %d", total)
 
-		for i := 0; i < total; i++ {
+		for i := range total {
 			wg.Add(1)
 			msgs <- messages[i]
 		}
@@ -309,24 +292,28 @@ func (r *Receiver) receiveMessages() error {
 
 // The following 2 methods satisfy the startup.Listener interface.
 func (r *Receiver) Listen() error {
-	if r.handlers != nil && len(r.handlers) > 0 {
-		return r.receiveMessages()
+	r.log.Debugf("listen")
+	err := r.open()
+	if err != nil {
+		azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
+		r.log.Infof("%s", azerr)
+		return azerr
 	}
-	return ErrNoHandler
+	return r.receiveMessages()
 }
 
 func (r *Receiver) Shutdown(ctx context.Context) error {
-	r.Close(ctx)
+	r.close_()
 	return nil
 }
 
-func (r *Receiver) Open() error {
+func (r *Receiver) open() error {
 	var err error
 
 	if r.receiver != nil {
 		return nil
 	}
-	r.log.Debugf("Open")
+
 	client, err := r.azClient.azClient()
 	if err != nil {
 		return err
@@ -345,21 +332,31 @@ func (r *Receiver) Open() error {
 	}
 
 	r.receiver = receiver
+	for j := range len(r.handlers) {
+		err = r.handlers[j].Open()
+		if err != nil {
+			return fmt.Errorf("failed to open handler: %w", err)
+		}
+	}
 	return nil
 }
 
-func (r *Receiver) Close(ctx context.Context) {
+func (r *Receiver) close_() {
 	if r != nil {
-		r.mtx.Lock()
-		defer r.mtx.Unlock()
-
 		if r.receiver != nil {
-			err := r.receiver.Close(ctx)
+			r.mtx.Lock()
+			defer r.mtx.Unlock()
+
+			err := r.receiver.Close(context.Background())
 			if err != nil {
 				azerr := fmt.Errorf("%s: Error closing receiver: %w", r, NewAzbusError(err))
 				r.log.Infof("%s", azerr)
 			}
 			r.receiver = nil
+			for j := range len(r.handlers) {
+				r.handlers[j].Close()
+			}
+			r.handlers = []Handler{}
 		}
 	}
 }
