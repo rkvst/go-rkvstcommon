@@ -3,3 +3,5 @@
 .viminfo
 .local/
 .vscode/
+.bash_history
+.viminfo

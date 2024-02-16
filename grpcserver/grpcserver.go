@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	env "github.com/datatrails/go-datatrails-common/environment"
 	"github.com/datatrails/go-datatrails-common/grpchealth"
 	grpcHealth "google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -26,7 +25,7 @@ type RegisterServer func(*grpcServer)
 
 func defaultRegisterServer(g *grpcServer) {}
 
-type GRPCServer struct {
+type Server struct {
 	name          string
 	log           Logger
 	listenStr     string
@@ -38,34 +37,34 @@ type GRPCServer struct {
 	reflection    bool
 }
 
-type GRPCServerOption func(*GRPCServer)
+type ServerOption func(*Server)
 
-func WithAppendedInterceptor(i grpcUnaryServerInterceptor) GRPCServerOption {
-	return func(g *GRPCServer) {
+func WithAppendedInterceptor(i grpcUnaryServerInterceptor) ServerOption {
+	return func(g *Server) {
 		g.interceptors = append(g.interceptors, i)
 	}
 }
 
-func WithPrependedInterceptor(i grpcUnaryServerInterceptor) GRPCServerOption {
-	return func(g *GRPCServer) {
+func WithPrependedInterceptor(i grpcUnaryServerInterceptor) ServerOption {
+	return func(g *Server) {
 		g.interceptors = append([]grpcUnaryServerInterceptor{i}, g.interceptors...)
 	}
 }
 
-func WithRegisterServer(r RegisterServer) GRPCServerOption {
-	return func(g *GRPCServer) {
+func WithRegisterServer(r RegisterServer) ServerOption {
+	return func(g *Server) {
 		g.register = r
 	}
 }
 
-func WithoutHealth() GRPCServerOption {
-	return func(g *GRPCServer) {
+func WithoutHealth() ServerOption {
+	return func(g *Server) {
 		g.health = false
 	}
 }
 
-func WithReflection(r bool) GRPCServerOption {
-	return func(g *GRPCServer) {
+func WithReflection(r bool) ServerOption {
+	return func(g *Server) {
 		g.reflection = r
 	}
 }
@@ -77,21 +76,21 @@ func tracingFilter(ctx context.Context, fullMethodName string) bool {
 	return true
 }
 
-// New creates a new GRPCServer that is bound to a specific GRPC API. This object complies with
+// New creates a new Server that is bound to a specific GRPC API. This object complies with
 // the standard Listener service and can be managed by the startup.Listeners object.
-func New(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
-	listenStr := fmt.Sprintf(":%s", env.GetOrFatal("PORT"))
+func New(log Logger, name string, port string, opts ...ServerOption) *Server {
+	var g Server
 
-	g := GRPCServer{
-		name:      strings.ToLower(name),
-		listenStr: listenStr,
-		register:  defaultRegisterServer,
-		interceptors: []grpc.UnaryServerInterceptor{
-			grpc_otrace.UnaryServerInterceptor(grpc_otrace.WithFilterFunc(tracingFilter)),
-			grpc_validator.UnaryServerInterceptor(),
-		},
-		health: true,
+	listenStr := fmt.Sprintf(":%s", port)
+
+	g.name = strings.ToLower(name)
+	g.listenStr = listenStr
+	g.register = defaultRegisterServer
+	g.interceptors = []grpc.UnaryServerInterceptor{
+		grpc_otrace.UnaryServerInterceptor(grpc_otrace.WithFilterFunc(tracingFilter)),
+		grpc_validator.UnaryServerInterceptor(),
 	}
+	g.health = true
 	for _, opt := range opts {
 		opt(&g)
 	}
@@ -115,15 +114,15 @@ func New(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
 
 	g.server = server
 	g.log = log.WithIndex("grpcserver", g.String())
-	return g
+	return &g
 }
 
-func (g *GRPCServer) String() string {
+func (g *Server) String() string {
 	// No logging in this method please.
 	return fmt.Sprintf("%s%s", g.name, g.listenStr)
 }
 
-func (g *GRPCServer) Listen() error {
+func (g *Server) Listen() error {
 	listen, err := net.Listen("tcp", g.listenStr)
 	if err != nil {
 		return fmt.Errorf("failed to listen %s: %w", g, err)
@@ -141,7 +140,7 @@ func (g *GRPCServer) Listen() error {
 	return nil
 }
 
-func (g *GRPCServer) Shutdown(_ context.Context) error {
+func (g *Server) Shutdown(_ context.Context) error {
 	g.log.Infof("Shutdown")
 	if g.healthService != nil {
 		g.healthService.NotReady() // readiness

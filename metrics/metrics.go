@@ -121,16 +121,9 @@ func (m *Metrics) Register(cs ...prometheus.Collector) {
 	m.registry.MustRegister(cs...)
 }
 
-func (m *Metrics) Port() string {
-	if m != nil {
-		return m.port
-	}
-	return ""
-}
-
 // NewPromHandler - this handler is used on the endpoint that serves metrics endpoint
 // which is provided on a different port to the service.
 // The default InstrumentMetricHandler is suppressed.
-func (m *Metrics) NewPromHandler() http.Handler {
+func (m *Metrics) newPromHandler() http.Handler {
 	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{})
 }

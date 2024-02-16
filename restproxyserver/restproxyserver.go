@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"strings"
 
-	env "github.com/datatrails/go-datatrails-common/environment"
 	"github.com/datatrails/go-datatrails-common/httpserver"
 	"github.com/datatrails/go-datatrails-common/tracing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -33,7 +32,7 @@ type HeaderMatcherFunc = runtime.HeaderMatcherFunc
 type ErrorHandlerFunc = runtime.ErrorHandlerFunc
 type DialOption = grpc.DialOption
 
-type RegisterRESTProxyServer func(context.Context, *ServeMux, string, []DialOption) error
+type RegisterServer func(context.Context, *ServeMux, string, []DialOption) error
 
 type HandleChainFunc = httpserver.HandleChainFunc
 
@@ -43,8 +42,8 @@ type filePath struct {
 	fileHandler func(http.ResponseWriter, *http.Request, map[string]string)
 }
 
-// RESTProxyServer represents the grpc-gateway rest serve endpoint.
-type RESTProxyServer struct {
+// Server represents the grpc-gateway rest serve endpoint.
+type Server struct {
 	name        string
 	port        string
 	log         Logger
@@ -54,30 +53,30 @@ type RESTProxyServer struct {
 	options     []runtime.ServeMuxOption
 	filePaths   []filePath
 	handlers    []HandleChainFunc
-	registers   []RegisterRESTProxyServer
+	registers   []RegisterServer
 	mux         *runtime.ServeMux
 	server      *httpserver.Server
 }
 
-type RESTProxyServerOption func(*RESTProxyServer)
+type ServerOption func(*Server)
 
 // WithMarshaler specifies an optional marshaler.
-func WithMarshaler(mime string, m Marshaler) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithMarshaler(mime string, m Marshaler) ServerOption {
+	return func(g *Server) {
 		g.options = append(g.options, runtime.WithMarshalerOption(mime, m))
 	}
 }
 
 // SetQueryParameterParser adds an intercepror that matches header values.
-func SetQueryParameterParser(p QueryParameterParser) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func SetQueryParameterParser(p QueryParameterParser) ServerOption {
+	return func(g *Server) {
 		g.options = append(g.options, runtime.SetQueryParameterParser(p))
 	}
 }
 
 // WithIncomingHeaderMatcher adds an intercepror that matches header values.
-func WithIncomingHeaderMatcher(o HeaderMatcherFunc) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithIncomingHeaderMatcher(o HeaderMatcherFunc) ServerOption {
+	return func(g *Server) {
 		if o != nil && !reflect.ValueOf(o).IsNil() {
 			g.options = append(g.options, runtime.WithIncomingHeaderMatcher(o))
 		}
@@ -85,8 +84,8 @@ func WithIncomingHeaderMatcher(o HeaderMatcherFunc) RESTProxyServerOption {
 }
 
 // WithOutgoingHeaderMatcher matches header values on output. Nil argument is ignored.
-func WithOutgoingHeaderMatcher(o HeaderMatcherFunc) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithOutgoingHeaderMatcher(o HeaderMatcherFunc) ServerOption {
+	return func(g *Server) {
 		if o != nil && !reflect.ValueOf(o).IsNil() {
 			g.options = append(g.options, runtime.WithOutgoingHeaderMatcher(o))
 		}
@@ -94,8 +93,8 @@ func WithOutgoingHeaderMatcher(o HeaderMatcherFunc) RESTProxyServerOption {
 }
 
 // WithErrorHandler adds error handling in special cases - e.g on 402 or 429. Nil argument is ignored.
-func WithErrorHandler(o ErrorHandlerFunc) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithErrorHandler(o ErrorHandlerFunc) ServerOption {
+	return func(g *Server) {
 		if o != nil && !reflect.ValueOf(o).IsNil() {
 			g.options = append(g.options, runtime.WithErrorHandler(o))
 		}
@@ -103,24 +102,25 @@ func WithErrorHandler(o ErrorHandlerFunc) RESTProxyServerOption {
 }
 
 // WithGRPCAddress - overides the defaultGRPCAddress ('localhost:<port>')
-func WithGRPCAddress(a string) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+// NB: will be removed
+func WithGRPCAddress(a string) ServerOption {
+	return func(g *Server) {
 		g.grpcAddress = a
 	}
 }
 
 // WithRegisterHandlers adds grpc-gateway handlers. A nil value will emit an
 // error from the Listen() method.
-func WithRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithRegisterHandlers(registerers ...RegisterServer) ServerOption {
+	return func(g *Server) {
 		g.registers = append(g.registers, registerers...)
 	}
 }
 
 // WithOptionalRegisterHandler adds grpc-gateway handlers. A nil value will be
 // ignored.
-func WithOptionalRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithOptionalRegisterHandlers(registerers ...RegisterServer) ServerOption {
+	return func(g *Server) {
 		for i := 0; i < len(registerers); i++ {
 			registerer := registerers[i]
 			if registerer != nil && !reflect.ValueOf(registerer).IsNil() {
@@ -132,16 +132,16 @@ func WithOptionalRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTPr
 
 // WithHTTPHandlers adds handlers on the http endpoint. A nil value will
 // return an error on executiong Listen()
-func WithHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithHTTPHandlers(handlers ...HandleChainFunc) ServerOption {
+	return func(g *Server) {
 		g.handlers = append(g.handlers, handlers...)
 	}
 }
 
 // WithOptionalHTTPHandlers adds handlers on the http endpoint. A nil value will
 // be ignored.
-func WithOptionalHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithOptionalHTTPHandlers(handlers ...HandleChainFunc) ServerOption {
+	return func(g *Server) {
 		for i := 0; i < len(handlers); i++ {
 			handler := handlers[i]
 			if handler != nil && !reflect.ValueOf(handler).IsNil() {
@@ -152,22 +152,22 @@ func WithOptionalHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption
 }
 
 // WithAppendedDialOption appends a grpc dial option.
-func WithAppendedDialOption(d DialOption) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithAppendedDialOption(d DialOption) ServerOption {
+	return func(g *Server) {
 		g.dialOptions = append(g.dialOptions, d)
 	}
 }
 
 // WithPrependedDialOption prepends a grpc dial option.
-func WithPrependedDialOption(d DialOption) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithPrependedDialOption(d DialOption) ServerOption {
+	return func(g *Server) {
 		g.dialOptions = append([]DialOption{d}, g.dialOptions...)
 	}
 }
 
 // WithHandlePath add REST file path handler.
-func WithHandlePath(verb string, urlPath string, f func(http.ResponseWriter, *http.Request, map[string]string)) RESTProxyServerOption {
-	return func(g *RESTProxyServer) {
+func WithHandlePath(verb string, urlPath string, f func(http.ResponseWriter, *http.Request, map[string]string)) ServerOption {
+	return func(g *Server) {
 		g.filePaths = append(
 			g.filePaths,
 			filePath{
@@ -179,42 +179,48 @@ func WithHandlePath(verb string, urlPath string, f func(http.ResponseWriter, *ht
 	}
 }
 
-// New creates a new RESTProxyServer that is bound to a specific GRPC Gateway API. This object complies with
+// New creates a new Server that is bound to a specific GRPC Gateway API. This object complies with
 // the standard Listener interface and can be managed by the startup.Listeners object.
-func New(log Logger, name string, port string, opts ...RESTProxyServerOption) RESTProxyServer {
+func New(log Logger, name string, port string, opts ...ServerOption) *Server {
+	var g Server
+	return new_(&g, log, name, port, opts...)
+}
 
-	g := RESTProxyServer{
-		name:        strings.ToLower(name),
-		port:        port,
-		dialOptions: tracing.GRPCDialTracingOptions(),
-		options:     []runtime.ServeMuxOption{},
-		filePaths:   []filePath{},
-		handlers:    []HandleChainFunc{},
-		registers:   []RegisterRESTProxyServer{},
-	}
-	g.log = log.WithIndex("restproxyserver", g.String())
+// function outlining
+func new_(g *Server, log Logger, name string, port string, opts ...ServerOption) *Server {
+
+	g.name = strings.ToLower(name)
+	g.port = port
+	g.dialOptions = tracing.GRPCDialTracingOptions()
+	g.options = []runtime.ServeMuxOption{}
+	g.filePaths = []filePath{}
+	g.handlers = []HandleChainFunc{}
+	g.registers = []RegisterServer{}
+
 	for _, opt := range opts {
-		opt(&g)
+		opt(g)
 	}
 
 	if g.grpcAddress == "" {
-		port := env.GetOrFatal("PORT")
 		g.grpcAddress = fmt.Sprintf("localhost:%s", port)
 	}
 
 	g.mux = runtime.NewServeMux(g.options...)
+	g.log = log.WithIndex("restproxyserver", g.name)
 	return g
 }
 
-func (g *RESTProxyServer) String() string {
+func (g *Server) String() string {
 	// No logging in this method please.
 	return fmt.Sprintf("%s:%s", g.name, g.port)
 }
 
-func (g *RESTProxyServer) Listen() error {
+func (g *Server) Listen() error {
+
+	var err error
 
 	for _, p := range g.filePaths {
-		err := g.mux.HandlePath(p.verb, p.urlPath, p.fileHandler)
+		err = g.mux.HandlePath(p.verb, p.urlPath, p.fileHandler)
 		if err != nil {
 			return fmt.Errorf("cannot handle path %s: %w", p.urlPath, err)
 		}
@@ -227,7 +233,7 @@ func (g *RESTProxyServer) Listen() error {
 		if reflect.ValueOf(register).IsNil() {
 			return ErrNilRegistererValue
 		}
-		err := register(context.Background(), g.mux, g.grpcAddress, g.dialOptions)
+		err = register(context.Background(), g.mux, g.grpcAddress, g.dialOptions)
 		if err != nil {
 			return err
 		}
@@ -245,7 +251,7 @@ func (g *RESTProxyServer) Listen() error {
 	return g.server.Listen()
 }
 
-func (g *RESTProxyServer) Shutdown(ctx context.Context) error {
+func (g *Server) Shutdown(ctx context.Context) error {
 	g.log.Infof("Shutdown")
 	return g.server.Shutdown(ctx)
 }
