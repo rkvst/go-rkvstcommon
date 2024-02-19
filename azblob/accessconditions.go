@@ -3,12 +3,15 @@ package azblob
 import (
 	"errors"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/lease"
 )
 
-func storerOptionConditions(options *StorerOptions) (azStorageBlob.BlobAccessConditions, error) {
+func storerOptionConditions(options *StorerOptions) (blob.AccessConditions, error) {
 
-	var blobAccessConditions azStorageBlob.BlobAccessConditions
+	var blobAccessConditions blob.AccessConditions
 	if options.leaseID == "" && options.etagCondition == EtagNotUsed {
 		return blobAccessConditions, nil
 	}
@@ -16,20 +19,22 @@ func storerOptionConditions(options *StorerOptions) (azStorageBlob.BlobAccessCon
 		return blobAccessConditions, errors.New("etag value missing")
 	}
 
-	blobAccessConditions = azStorageBlob.BlobAccessConditions{}
+	blobAccessConditions = blob.AccessConditions{}
 	if options.leaseID != "" {
-		blobAccessConditions.LeaseAccessConditions = &azStorageBlob.LeaseAccessConditions{
+		blobAccessConditions.LeaseAccessConditions = &lease.AccessConditions{
 			LeaseID: &options.leaseID,
 		}
 	}
 
-	blobAccessConditions.ModifiedAccessConditions = &azStorageBlob.ModifiedAccessConditions{}
+	blobAccessConditions.ModifiedAccessConditions = &blob.ModifiedAccessConditions{}
 
 	switch options.etagCondition {
 	case ETagMatch:
-		blobAccessConditions.ModifiedAccessConditions.IfMatch = &options.etag
+		t := azcore.ETag(options.etag)
+		blobAccessConditions.ModifiedAccessConditions.IfMatch = &t
 	case ETagNoneMatch:
-		blobAccessConditions.ModifiedAccessConditions.IfNoneMatch = &options.etag
+		t := azcore.ETag(options.etag)
+		blobAccessConditions.ModifiedAccessConditions.IfNoneMatch = &t
 	case TagsWhere:
 		blobAccessConditions.ModifiedAccessConditions.IfTags = &options.etag
 	default:

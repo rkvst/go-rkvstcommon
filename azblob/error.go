@@ -6,7 +6,10 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/datatrails/go-datatrails-common/logger"
 )
 
@@ -43,9 +46,9 @@ func (e *Error) Unwrap() error {
 // StatusCode returns status code for failing request or 500 if code is not available on the error
 func (e *Error) StatusCode() int {
 
-	var terr *azStorageBlob.StorageError
+	var terr *azcore.ResponseError
 	if errors.As(e.err, &terr) {
-		resp := terr.Response()
+		resp := terr.RawResponse
 		if resp.Body != nil {
 			defer resp.Body.Close()
 		}
@@ -62,7 +65,7 @@ func (e *Error) StatusCode() int {
 
 // StorageErrorCode returns the underlying azure storage ErrorCode string eg "BlobNotFound"
 func (e *Error) StorageErrorCode() string {
-	var terr *azStorageBlob.StorageError
+	var terr *azcore.ResponseError
 	if errors.As(e.err, &terr) {
 		if terr.ErrorCode != "" {
 			return string(terr.ErrorCode)
@@ -74,5 +77,5 @@ func (e *Error) StorageErrorCode() string {
 // IsConditionNotMet returns true if the err is the storage code indicating that
 // a If- header predicate (eg ETag) was not met
 func (e *Error) IsConditionNotMet() bool {
-	return e.StorageErrorCode() == string(azStorageBlob.StorageErrorCodeConditionNotMet)
+	return bloberror.HasCode(e, bloberror.ConditionNotMet)
 }

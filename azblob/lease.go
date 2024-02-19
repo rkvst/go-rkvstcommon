@@ -9,7 +9,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/lease"
 
 	"github.com/datatrails/go-datatrails-common/logger"
 )
@@ -83,25 +86,24 @@ func (azp *Storer) AcquireLeaseRenewable(
 func (azp *Storer) acquireLease(
 	ctx context.Context, objectname string, leaseTimeout int32,
 ) (
-	*azStorageBlob.BlobAcquireLeaseResponse, *azStorageBlob.BlobLeaseClient, error,
+	*lease.ContainerAcquireResponse, *lease.ContainerClient, error,
 ) {
 	logger.Sugar.Debugf("acquireLease: %v", objectname)
 
-	blockBlobClient, err := azp.containerClient.NewBlockBlobClient(objectname)
+	leaseBlobClient, err := lease.NewContainerClient(
+		azp.containerClient,
+		&lease.ContainerClientOptions{
+			LeaseID: to.Ptr(objectname),
+		},
+	)
 	if err != nil {
 		logger.Sugar.Infof("cannot create block blob client %s: %v", objectname, err)
 		return nil, nil, err
 	}
-	leaseBlobClient, err := blockBlobClient.NewBlobLeaseClient(nil)
-	if err != nil {
-		logger.Sugar.Infof("cannot create lease Blob %s: %v", objectname, err)
-		return nil, nil, err
-	}
 	lease, err := leaseBlobClient.AcquireLease(
 		ctx,
-		&azStorageBlob.BlobAcquireLeaseOptions{
-			Duration: &leaseTimeout,
-		},
+		leaseTimeout,
+		nil,
 	)
 
 	return &lease, leaseBlobClient, err
@@ -120,12 +122,12 @@ func (azp *Storer) ReleaseLeaseDeferable(ctx context.Context, objectname string,
 func (azp *Storer) ReleaseLease(ctx context.Context, objectname string, leaseID string,
 ) error {
 	logger.Sugar.Debugf("ReleaseLease: %v", objectname)
-	blockBlobClient, err := azp.containerClient.NewBlockBlobClient(objectname)
-	if err != nil {
-		logger.Sugar.Infof("cannot create block Blob client %s: %v", objectname, err)
-		return err
-	}
-	leaseBlobClient, err := blockBlobClient.NewBlobLeaseClient(&leaseID)
+	leaseBlobClient, err := lease.NewContainerClient(
+		azp.containerClient,
+		&lease.ContainerClientOptions{
+			LeaseID: to.Ptr(objectname),
+		},
+	)
 	if err != nil {
 		logger.Sugar.Infof("cannot create lease Blob %s: %v", objectname, err)
 		return err
