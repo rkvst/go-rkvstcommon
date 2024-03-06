@@ -1,6 +1,6 @@
 module github.com/datatrails/go-datatrails-common
 
-go 1.21
+go 1.22
 
 replace github.com/datatrails/go-datatrails-common => ./
 

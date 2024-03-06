@@ -149,6 +149,7 @@ linters:
     - gosec
     - gosimple
     - ifshort
+    - inamedparam
     - interfacer
     - interfacebloat
     - ireturn
@@ -166,6 +167,8 @@ linters:
     - nosnakecase
     - nosprintfhostport
     - paralleltest
+    - perfsprint
+    - protogetter
     - prealloc
     - revive
     - rowserrcheck
@@ -175,6 +178,7 @@ linters:
     - tagalign
     - tagliatelle
     - tenv
+    - testifylint
     - testpackage
     - thelper
     - tparallel
