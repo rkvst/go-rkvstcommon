@@ -4,14 +4,11 @@ package azblob
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 )
 
 func uniqueTestName(testName string, t *testing.T) string {
@@ -21,17 +18,6 @@ func uniqueTestName(testName string, t *testing.T) string {
 		return testName
 	}
 	return fmt.Sprintf("%s-%s", testName, uid.String())
-}
-
-func TestInteralErrorToContextCanceled(t *testing.T) {
-
-	ctx, _ := context.WithTimeout(context.Background(), 1*time.Millisecond)
-
-	<-ctx.Done()
-
-	err := ctx.Err()
-	ok := errors.Is(err, context.DeadlineExceeded)
-	assert.True(t, ok)
 }
 
 // Tests covering the setting and behaviour of etags. Requires the azurite emulator to be running
