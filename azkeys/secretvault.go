@@ -57,11 +57,11 @@ func getWithDefault(key string) string {
 
 func EnvironmentAuthorizer() (autorest.Authorizer, error) {
 
-	logger.Sugar.Infof("Using env authorizer for keyvault")
-	logger.Sugar.Infof("AZURE_TENANT_ID: %s", getWithDefault("AZURE_TENANT_ID"))
-	logger.Sugar.Infof("AZURE_CLIENT_ID: %s", getWithDefault("AZURE_CLIENT_ID"))
+	logger.Sugar.Debugf("Using env authorizer for keyvault")
+	logger.Sugar.Debugf("AZURE_TENANT_ID: %s", getWithDefault("AZURE_TENANT_ID"))
+	logger.Sugar.Debugf("AZURE_CLIENT_ID: %s", getWithDefault("AZURE_CLIENT_ID"))
 	// We do not use the env auhtorizer in production
-	logger.Sugar.Infof("AZURE_CLIENT_SECRET: %s", getWithDefault("AZURE_CLIENT_SECRET"))
+	logger.Sugar.Debugf("AZURE_CLIENT_SECRET: %s", getWithDefault("AZURE_CLIENT_SECRET"))
 
 	return auth.NewAuthorizerFromEnvironment()
 }

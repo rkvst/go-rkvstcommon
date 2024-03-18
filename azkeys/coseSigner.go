@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
-	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/veraison/go-cose"
 )
 
@@ -62,7 +61,6 @@ func base64BEtoBigInt(in string) (*big.Int, error) {
 
 // PublicKey gets the latest key's public key
 func (kv *CoseSignerKeyVault) PublicKey() (*ecdsa.PublicKey, error) {
-	logger.Sugar.Infof("PublicKey: %s %s", kv.url, kv.keyName)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -97,7 +95,6 @@ func (kv *CoseSignerKeyVault) PublicKey() (*ecdsa.PublicKey, error) {
 // Sign signs a given content
 func (kv *CoseSignerKeyVault) Sign(rand io.Reader, content []byte) ([]byte, error) {
 
-	logger.Sugar.Infof("Sign: %s %s", kv.url, kv.keyName)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
