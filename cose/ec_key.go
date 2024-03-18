@@ -77,8 +77,6 @@ func NewECCoseKey(coseKey map[int64]interface{}) (*ECCoseKey, error) {
 //	ECCoseKey
 func (ecck *ECCoseKey) PublicKey() (crypto.PublicKey, error) {
 
-	logger.Sugar.Info("PublicKey: %v", ecck)
-
 	publicKey := ecdsa.PublicKey{}
 
 	// first find the curve

@@ -196,28 +196,30 @@ func (cs *CoseSign1Message) CWTClaimsFromProtectedHeader() (*CWTClaims, error) {
 		return nil, &ErrUnexpectedProtectedHeaderType{label: HeaderLabelCWTClaims, expectedType: "map[interface{}]interface{}", actualType: reflect.TypeOf(cwtClaimsMap).String()}
 	}
 
-	logger.Sugar.Infof("CWT Claims: %v", cwtClaimsMap)
-
 	issuer, ok := cwtClaimsMap[int64(cwt.KeyIss)]
 	if !ok {
+		logger.Sugar.Infof("CWT Claims: %v", cwtClaimsMap)
 		logger.Sugar.Infof("CWTClaimsFromProtectedHeader: failed to get issuer from cwt claims: %v", err)
 		return nil, ErrCWTClaimsNoIssuer
 	}
 
 	issuerStr, ok := issuer.(string)
 	if !ok {
+		logger.Sugar.Infof("CWT Claims: %v", cwtClaimsMap)
 		logger.Sugar.Infof("CWTClaimsFromProtectedHeader: issuer is not string: %v", err)
 		return nil, ErrCWTClaimsIssuerNotString
 	}
 
 	subject, ok := cwtClaimsMap[int64(cwt.KeySub)]
 	if !ok {
+		logger.Sugar.Infof("CWT Claims: %v", cwtClaimsMap)
 		logger.Sugar.Infof("CWTClaimsFromProtectedHeader: failed to get subject from cwt claims: %v", err)
 		return nil, ErrCWTClaimsNoSubject
 	}
 
 	subjectStr, ok := subject.(string)
 	if !ok {
+		logger.Sugar.Infof("CWT Claims: %v", cwtClaimsMap)
 		logger.Sugar.Infof("CWTClaimsFromProtectedHeader: subject is not string: %v", err)
 		return nil, ErrCWTClaimsSubjectNotString
 	}
@@ -296,10 +298,10 @@ func (cs *CoseSign1Message) VerifyWithProvider(
 	if err != nil {
 		return err
 	}
-	logger.Sugar.Infof("verify: publicKey: %v, algorithm: %v", publicKey, algorithm)
 
 	verifier, err := cose.NewVerifier(algorithm, publicKey)
 	if err != nil {
+		logger.Sugar.Infof("verify: publicKey: %v, algorithm: %v", publicKey, algorithm)
 		logger.Sugar.Infof("verify: failed to make verifier from public key: %v", err)
 		return err
 	}
@@ -307,6 +309,7 @@ func (cs *CoseSign1Message) VerifyWithProvider(
 	// verify the message
 	err = cs.Verify(external, verifier)
 	if err != nil {
+		logger.Sugar.Infof("verify: publicKey: %v, algorithm: %v", publicKey, algorithm)
 		logger.Sugar.Infof("verify: failed to verify message: %v", err)
 		return err
 	}
