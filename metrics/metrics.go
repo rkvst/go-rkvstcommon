@@ -7,8 +7,6 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-
-	"github.com/datatrails/go-datatrails-common/environment"
 )
 
 const (
@@ -98,33 +96,19 @@ func WithLabel(label string, offset int) MetricsOption {
 	}
 }
 
-func New(log Logger, serviceName string, opts ...MetricsOption) *Metrics {
-	m := Metrics{
-		log:         log,
-		serviceName: strings.ToLower(serviceName),
-		registry:    prometheus.NewRegistry(),
-		labels:      []latencyObserveOffset{},
-	}
-	for _, opt := range opts {
-		opt(&m)
-	}
-	return &m
+func New(log Logger, serviceName string, port string, opts ...MetricsOption) *Metrics {
+	var m Metrics
+	return new_(&m, log, serviceName, port, opts...)
 }
 
-func NewFromEnvironment(log Logger, serviceName string, opts ...MetricsOption) *Metrics {
-	useMetrics := environment.GetTruthyOrFatal("USE_METRICS")
-	var port string
-	if useMetrics {
-		port = environment.GetOrFatal("METRICS_PORT")
-	}
-	var m *Metrics
-	if port != "" {
-		m = New(
-			log,
-			serviceName,
-			opts...,
-		)
-		m.port = port
+func new_(m *Metrics, log Logger, serviceName string, port string, opts ...MetricsOption) *Metrics {
+	m.log = log
+	m.serviceName = strings.ToLower(serviceName)
+	m.registry = prometheus.NewRegistry()
+	m.labels = []latencyObserveOffset{}
+	m.port = port
+	for _, opt := range opts {
+		opt(m)
 	}
 	return m
 }
