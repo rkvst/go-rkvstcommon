@@ -13,13 +13,15 @@ func (r *Receiver) handleReceivedMessageWithTracingContext(ctx context.Context, 
 	log.Debugf("ContextFromReceivedMessage(): ApplicationProperties %v", message.ApplicationProperties)
 	var opts = []opentracing.StartSpanOption{}
 	carrier := opentracing.TextMapCarrier{}
+	// This just gets all the message Application Properties into a string map. That map is then passed into the
+	// open tracing constructor which extracts any bits it is interested in to use to setup the spans etc.
+	// It will ignore anything it doesn't care about. So the filtering of the map is done for us and
+	// we don't need to pre-filter it.
 	for k, v := range message.ApplicationProperties {
 		// XXX: why only string values?
 		value, ok := v.(string)
 		if ok {
 			carrier.Set(k, value)
-		} else {
-			log.Debugf("Non-string value is not copied %s:%v", k, v)
 		}
 	}
 	spanCtx, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, carrier)
