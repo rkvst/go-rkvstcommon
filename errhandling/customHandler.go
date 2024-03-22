@@ -13,10 +13,8 @@ import (
 )
 
 const (
-	QuotaReached  = "QuotaReached"
-	QuotaUnknown  = "QuotaUnknown"
-	KhipuDisabled = "KhipuDisabled"
-	KhipuUnknown  = "KhipuUnknown"
+	QuotaReached = "QuotaReached"
+	QuotaUnknown = "QuotaUnknown"
 )
 
 // SetQuotaReached returns a labelled QuotaReached error
@@ -32,22 +30,6 @@ func SetQuotaUnknown(ctx context.Context, tenantID string, name string, err erro
 	return StatusWithRequestInfoFromContext(
 		ctx,
 		StatusWithQuotaFailure(tenantID, QuotaUnknown, fmt.Sprintf("%s: %v", name, err)),
-	).Err()
-}
-
-// SetKhipuUnknown returns a labelled KhipuUnknown error
-func SetKhipuUnknown(ctx context.Context, tenantID string) error {
-	return StatusWithRequestInfoFromContext(
-		ctx,
-		StatusWithQuotaFailure(tenantID, KhipuUnknown, ""),
-	).Err()
-}
-
-// SetKhipuDisabled returns a labelled KhipuUnknown error
-func SetKhipuDisabled(ctx context.Context, tenantID string) error {
-	return StatusWithRequestInfoFromContext(
-		ctx,
-		StatusWithQuotaFailure(tenantID, KhipuDisabled, ""),
 	).Err()
 }
 
@@ -101,25 +83,19 @@ func NewB2CErrorHandler(fallback runtime.ErrorHandlerFunc) runtime.ErrorHandlerF
 // In the first case the error is checked using the standard errors.Is() function.
 // In the second case we parse the status error string returned from the service.
 
-// if it is a quota error or khipu is disabled then replace http status with 402
+// if it is a quota error then replace http status with 402
 // (pay us money...)
 func checkFor402(err error) bool {
 	if IsStatusLimit(err, QuotaReached) {
 		return true
 	}
-	if IsStatusLimit(err, KhipuDisabled) {
-		return true
-	}
 	return false
 }
 
-// if it is a unknown error (failure to retrieve the curreat caps limit or to
-// determine if khipu is Enabled) then replace http status with 500
+// if it is a unknown error (failure to retrieve the curreat caps limit)
+// then replace http status with 500
 func checkFor500(err error) bool {
 	if IsStatusLimit(err, QuotaUnknown) {
-		return true
-	}
-	if IsStatusLimit(err, KhipuUnknown) {
 		return true
 	}
 	return false
