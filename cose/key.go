@@ -94,9 +94,17 @@ func NewCoseCommonKey(coseKey map[int64]interface{}) (*CoseCommonKey, error) {
 		algoritm = ""
 	}
 
+	// XXX: Type assertions to []byte were failing, hence this.
 	kid := coseKey[KeyIDLabel]
-	// TODO: error handling
-	kidBytes, _ := kid.([]byte)
+	kidString, ok := kid.(string)
+	if !ok {
+		logger.Sugar.Infof("NewCoseCommonKey: failed to interpret KID as string: %v", kid)
+	}
+
+	kidBytes := []byte(kidString)
+	if len(kidBytes) == 0 {
+		kidBytes = nil
+	}
 
 	keyOps := coseKey[KeyOperationsLabel]
 	// TODO: error handling

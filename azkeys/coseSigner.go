@@ -10,7 +10,9 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/big"
@@ -20,30 +22,96 @@ import (
 	"github.com/veraison/go-cose"
 )
 
-// CoseSignerKeyVault is the azure keyvault client for interacting with keyvault keys
+// IdentifiableCoseSigner represents a Cose1 signer that has additional methods to provide
+// sufficient information to verify the signed product (an identifier for the signing key and the
+// public key.)
+type IdentifiableCoseSigner interface {
+	cose.Signer
+	PublicKey() (*ecdsa.PublicKey, error)
+	KeyIdentifier() string
+	KeyLocation() string
+}
+
+// IdentifiableCoseSignerFactory is for creating IdentifiableCoseSigners. The reason for a factory
+// here is that we can always create a fresh instance, capturing the latest key information at that
+// point in time.
+type IdentifiableCoseSignerFactory interface {
+	NewIdentifiableCoseSigner(ctx context.Context) (IdentifiableCoseSigner, error)
+}
+
+// KeyVaultCoseSignerFactory creates instances of our Azure KeyVault implementation of
+// IdentifiableCoseSigner. The keyvault configuration is stored on the object and new instances
+// can be created without caller knowledge of it.
+type KeyVaultCoseSignerFactory struct {
+	keyVaultURL string
+	keyName     string
+}
+
+// NewKeyVaultCoseSignerFactory returns a new instance of the factory, storing the keyvault config
+func NewKeyVaultCoseSignerFactory(keyVaultURL string, keyName string) *KeyVaultCoseSignerFactory {
+	return &KeyVaultCoseSignerFactory{
+		keyVaultURL: keyVaultURL,
+		keyName:     keyName,
+	}
+}
+
+// NewIdentifiableCoseSigner creates a new keyvault configuration that signs with ES384
+// using the latest version of the named key
+func (f *KeyVaultCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Context) (IdentifiableCoseSigner, error) {
+	hasher := sha256.New()
+	hasher.Write([]byte("azure-keyvault"))
+	locationHash := hasher.Sum(nil)
+	locationHashString := hex.EncodeToString(locationHash)[:6]
+
+	kv := KeyVaultCoseSigner{
+		keyName: f.keyName,
+		alg:     keyvault.ES384, // hardwired for the moment, add caller setting when needed
+		KeyVault: &KeyVault{
+			url: f.keyVaultURL,
+		},
+		locationIdentifier: locationHashString,
+	}
+
+	key, err := kv.GetLatestKey(ctx, kv.keyName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get latest key for %s: %w", kv.keyName, err)
+	}
+
+	if key.Key.Kid == nil {
+		return nil, fmt.Errorf("key ID is nil")
+	}
+
+	kv.key = key
+
+	return &kv, nil
+}
+
+// KeyVaultCoseSigner is the azure keyvault client for interacting with keyvault keys
 // using a cose.Signer interface
-type CoseSignerKeyVault struct {
-	keyName string
-	alg     keyvault.JSONWebKeySignatureAlgorithm
+type KeyVaultCoseSigner struct {
+	keyName            string
+	alg                keyvault.JSONWebKeySignatureAlgorithm
+	key                keyvault.KeyBundle
+	locationIdentifier string
 	*KeyVault
 }
 
-// NewCoseSignerKeyVault creates a new keyvault configuration that signs with ES384
-// using the latest version of the named key
-func NewCoseSignerKeyVault(keyVaultURL string, keyName string) *CoseSignerKeyVault {
-	kv := CoseSignerKeyVault{
-		keyName: keyName,
-		alg:     keyvault.ES384, // hardwired for the moment, add caller setting when needed
-		KeyVault: &KeyVault{
-			url: keyVaultURL,
-		},
-	}
-	return &kv
+// KeyLocation returns an identifier for the place where the key is stored, used by the
+// KeyIdentifier implementation.
+func (kv *KeyVaultCoseSigner) KeyLocation() string {
+	return kv.locationIdentifier
 }
 
 // Algorithm gets the cose algorithm for the key
-func (kv *CoseSignerKeyVault) Algorithm() cose.Algorithm {
+func (kv *KeyVaultCoseSigner) Algorithm() cose.Algorithm {
 	return cose.AlgorithmES384
+}
+
+// KeyIdentifier returns the essential information to identify the key, apart from any platform
+// specific format (i.e. the Azure URL.) It takes the form: <location>:<key name>/<key version>.
+// The location helps us identify where this key is stored. In this case, its azure key vault
+func (kv *KeyVaultCoseSigner) KeyIdentifier() string {
+	return fmt.Sprintf("%s:%s/%s", kv.KeyLocation(), GetKeyName(*kv.key.Key.Kid), GetKeyVersion(*kv.key.Key.Kid))
 }
 
 // base64BEtoBigInt takes a URL Encoded, base 64 encoded big endian byte array
@@ -59,28 +127,20 @@ func base64BEtoBigInt(in string) (*big.Int, error) {
 	return i, nil
 }
 
-// PublicKey gets the latest key's public key
-func (kv *CoseSignerKeyVault) PublicKey() (*ecdsa.PublicKey, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	key, err := kv.GetLatestKey(ctx, kv.keyName)
-	if err != nil {
-		return nil, fmt.Errorf("unable to get latest key for %s: %w", kv.keyName, err)
-	}
-
-	if key.Key.X == nil || key.Key.Y == nil {
+// PublicKey returns the public key for this instance of CoseSignerKeyVault
+func (kv *KeyVaultCoseSigner) PublicKey() (*ecdsa.PublicKey, error) {
+	if kv.key.Key.X == nil || kv.key.Key.Y == nil {
 		return nil, fmt.Errorf("public key is nil")
 	}
 
-	X, err := base64BEtoBigInt(*key.Key.X)
+	X, err := base64BEtoBigInt(*kv.key.Key.X)
 	if err != nil {
-		return nil, fmt.Errorf("unable to convert X %s: %w", *key.Key.X, err)
+		return nil, fmt.Errorf("unable to convert X %s: %w", *kv.key.Key.X, err)
 	}
 
-	Y, err := base64BEtoBigInt(*key.Key.Y)
+	Y, err := base64BEtoBigInt(*kv.key.Key.Y)
 	if err != nil {
-		return nil, fmt.Errorf("unable to convert Y %s: %w", *key.Key.Y, err)
+		return nil, fmt.Errorf("unable to convert Y %s: %w", *kv.key.Key.Y, err)
 	}
 
 	return &ecdsa.PublicKey{
@@ -93,24 +153,14 @@ func (kv *CoseSignerKeyVault) PublicKey() (*ecdsa.PublicKey, error) {
 }
 
 // Sign signs a given content
-func (kv *CoseSignerKeyVault) Sign(rand io.Reader, content []byte) ([]byte, error) {
-
+func (kv *KeyVaultCoseSigner) Sign(rand io.Reader, content []byte) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	key, err := kv.GetLatestKey(ctx, kv.keyName)
-	if err != nil {
-		return []byte{}, fmt.Errorf("unable to get latest key for %s: %w", kv.keyName, err)
-	}
-
-	if key.Key.Kid == nil {
-		return []byte{}, fmt.Errorf("key ID is nil")
-	}
 
 	signature, err := kv.KeyVault.HashAndSign(
 		ctx,
 		content,
-		*key.Key.Kid,
+		*kv.key.Key.Kid,
 		kv.alg,
 	)
 	if err != nil {

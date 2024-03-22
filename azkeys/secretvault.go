@@ -12,9 +12,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/keyvault/keyvault"
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (

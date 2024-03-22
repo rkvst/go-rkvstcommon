@@ -397,7 +397,7 @@ func TestCoseSign1Message_CWTClaimsFromProtectedHeader(t *testing.T) {
 								int64(8): map[interface{}]interface{}{
 									int64(1): map[interface{}]interface{}{
 										int64(-1): "P-384",
-										int64(2):  []byte("testkey"),
+										int64(2):  "testkey",
 										int64(1):  "EC",
 										int64(-2): []byte("QhPk3wbfLoowqrmOewzZVMtQSdC_pMUeOvVxQ7k1-Lojfv2n8buIhGw5znifNLMG"),
 										int64(-3): []byte("AFxaZUbSjVR-qlRPX7WiU72xkkiFyjmautqOYm4BcPURpirIz4ySPTBXNDPQ2ZUW"),

@@ -102,5 +102,8 @@ func (ecck *ECCoseKey) PublicKey() (crypto.PublicKey, error) {
 	publicKey.Y = y
 
 	return &publicKey, nil
+}
 
+func (ecck *ECCoseKey) KeyID() []byte {
+	return ecck.Kid
 }
