@@ -61,13 +61,13 @@ func StatusWithQuotaFailure(subject string, label string, name string) *Status {
 
 func IsStatusLimit(err error, label string) bool {
 	st := status.Convert(err)
-	logger.Sugar.Debugf("IsStatusLimit: status %s %s", label, st)
 	for _, detail := range st.Details() {
 		switch v := detail.(type) {
 		case *errdetails.QuotaFailure:
 			for _, violation := range v.GetViolations() {
 				vals := strings.Split(violation.GetDescription(), " ")
 				if len(vals) > 1 && vals[1] == label {
+					logger.Sugar.Debugf("IsStatusLimit: true: status %s %s", label, st)
 					return true
 				}
 			}
