@@ -24,6 +24,7 @@ type CountResource struct {
 
 	resourceCounter ResourceCounter
 	name            string
+	limit           int64
 }
 
 type CountResourceOption func(*CountResource)
@@ -130,6 +131,11 @@ func (cr *CountResource) Consume(ctx context.Context, tenantID string) error {
 	return nil
 }
 
+// GetLimit gets the current limit
+func (cr *CountResource) GetLimit() int64 {
+	return cr.limit
+}
+
 // Limited returns true if the limit counter is enabled. The current limit
 // is retrieved from upstream if necessary using the Limiter method. This happens
 // when the current TTL parameters are exceeded.
@@ -157,6 +163,9 @@ func (cr *CountResource) Limited(ctx context.Context, tenantID string) bool {
 		return false
 	}
 
+	// stash the limit
+	cr.limit = limit
+
 	// we do not need to pull from upstream the local limit will do
 	logger.Sugar.Debugf("elapsed %v refreshTTL %v lastRefreshCount %d refreshCount %d",
 		elapsed, cr.refreshTTL, limits.lastRefreshCount, cr.refreshCount,
@@ -179,6 +188,7 @@ func (cr *CountResource) Limited(ctx context.Context, tenantID string) bool {
 	logger.Sugar.Debugf("Reset the TTL triggers")
 	limits.lastRefreshCount = 0
 	limits.lastRefreshTime = time.Now()
+	cr.limit = newLimit
 
 	// check if the new limit is the same as the old limit
 	if newLimit == limit {
