@@ -56,7 +56,6 @@ func (azp *Storer) putBlob(
 
 	blockBlobClient, err := azp.containerClient.NewBlockBlobClient(identity)
 	if err != nil {
-		logger.Sugar.Infof("Cannot get block blob client blob: %v", err)
 		return nil, ErrorFromError(err)
 	}
 
@@ -70,7 +69,6 @@ func (azp *Storer) putBlob(
 		},
 	)
 	if err != nil {
-		logger.Sugar.Infof("Cannot upload blob: %v", err)
 		return nil, ErrorFromError(err)
 	}
 	return uploadWriteResponse(r), nil
