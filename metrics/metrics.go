@@ -61,16 +61,16 @@ func RequestsLatencyMetric() *prometheus.HistogramVec {
 	)
 }
 
-// create metric according to proof mechanism of simple hash or merkle log
-// EventsConfirmDurationMetric measures an SLA "95% of all confirmations must be made in less than 5minutes" and to
+// create metric according to duration.
+// DurationMetric measures an SLA "95% of all confirmations must be made in less than 5minutes" and to
 // plot average confirmation time and the apdex score.
 // https://www.bookstack.cn/read/prometheus-en/1e87bb1c6ea1f003.md
 // bucket limits are in seconds... and may be different for simple hash, merkle log or other duration metrics.
-func NewEventsConfirmDurationMetric(name string, buckets []float64) *prometheus.HistogramVec {
+func NewDurationMetric(name string, buckets []float64) *prometheus.HistogramVec {
 	return prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    fmt.Sprintf("archivist_%sevents_confirmation_duration", name),
-			Help:    fmt.Sprintf("Histogram of time to confirm a %s event.", name),
+			Name:    fmt.Sprintf("archivist_%s_duration", name),
+			Help:    fmt.Sprintf("Histogram of duration of a %s event.", name),
 			Buckets: buckets,
 		},
 		[]string{"operation"},
