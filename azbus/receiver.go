@@ -168,14 +168,18 @@ func (r *Receiver) String() string {
 func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler Handler) {
 	now := time.Now()
 
-	log := r.log.FromContext(ctx)
-	defer log.Close()
+	// the context wont have a trace span on it yet, so stick with the reciever logger instance
 
-	log.Debugf("Processing message %d", count)
+	r.log.Debugf("Processing message %d", count)
 	disp, ctx, err := r.handleReceivedMessageWithTracingContext(ctx, msg, handler)
 	r.dispose(ctx, disp, err, msg)
 
 	duration := time.Since(now)
+
+	// Now we do have a tracing context we can use it for logging
+	log := r.log.FromContext(ctx)
+	defer log.Close()
+
 	log.Debugf("Processing message %d took %s", count, duration)
 
 	// This is safe because maxDuration is only defined if RenewMessageLock is false.

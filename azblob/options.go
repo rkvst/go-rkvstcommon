@@ -44,9 +44,10 @@ type StorerOptions struct {
 	sinceCondition IfSinceCondition
 	since          *time.Time
 	// Options for List()
-	listPrefix string
-	listDelim  string
-	listMarker ListMarker
+	listPrefix     string
+	listDelim      string
+	listMarker     ListMarker
+	listMaxResults int32
 	// extra data model items to include in the respponse
 	listIncludeTags     bool
 	listIncludeMetadata bool
@@ -59,6 +60,12 @@ type Option func(*StorerOptions)
 func WithListPrefix(prefix string) Option {
 	return func(a *StorerOptions) {
 		a.listPrefix = prefix
+	}
+}
+
+func WithListMaxResults(maxResults int32) Option {
+	return func(a *StorerOptions) {
+		a.listMaxResults = maxResults
 	}
 }
 

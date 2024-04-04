@@ -1,6 +1,7 @@
 package errhandling
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"testing"
@@ -57,7 +58,7 @@ func TestErrB2c(t *testing.T) {
 
 	for _, test := range table {
 		t.Run(test.name, func(t *testing.T) {
-			actual, err := GetErrB2c(test.err)
+			actual, err := GetErrB2c(context.TODO(), test.err)
 
 			assert.Equal(t, test.eErr, err)
 			assert.Equal(t, test.expected, actual)

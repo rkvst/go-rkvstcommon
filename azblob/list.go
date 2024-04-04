@@ -8,6 +8,7 @@ import (
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 
 	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 // Count counts the number of blobs filtered by the given tags filter
@@ -61,21 +62,32 @@ type ListerResponse struct {
 
 func (azp *Storer) List(ctx context.Context, opts ...Option) (*ListerResponse, error) {
 
+	span, ctx := tracing.StartSpanFromContext(ctx, "ListBlobsFlat")
+	defer span.Finish()
+
 	options := &StorerOptions{}
 	for _, opt := range opts {
 		opt(options)
+	}
+	if options.listMarker != nil {
+		span.SetTag("marker", *options.listMarker)
 	}
 	o := azStorageBlob.ContainerListBlobsFlatOptions{
 		Marker: options.listMarker,
 	}
 	if options.listPrefix != "" {
 		o.Prefix = &options.listPrefix
+		span.SetTag("prefix", options.listPrefix)
 	}
 	if options.listIncludeTags {
 		o.Include = append(o.Include, azStorageBlob.ListBlobsIncludeItemTags)
 	}
 	if options.listIncludeMetadata {
 		o.Include = append(o.Include, azStorageBlob.ListBlobsIncludeItemMetadata)
+	}
+	if options.listMaxResults > 0 {
+		o.MaxResults = &options.listMaxResults
+		span.SetTag("maxResults", options.listMaxResults)
 	}
 
 	// TODO: v1.21 feature which would be great
@@ -92,6 +104,11 @@ func (azp *Storer) List(ctx context.Context, opts ...Option) (*ListerResponse, e
 
 	if resp.Prefix != nil {
 		r.Prefix = *resp.Prefix
+	}
+
+	r.Marker = resp.NextMarker
+	if r.Marker != nil {
+		span.SetTag("nextmarker", *r.Marker)
 	}
 
 	// Note: we pass on the azure type otherwise we would be copying for no good

@@ -10,10 +10,10 @@ import (
 
 	env "github.com/datatrails/go-datatrails-common/environment"
 	"github.com/datatrails/go-datatrails-common/httpserver"
-	"github.com/datatrails/go-datatrails-common/tracing"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -186,7 +186,7 @@ func New(log Logger, name string, port string, opts ...RESTProxyServerOption) RE
 	g := RESTProxyServer{
 		name:        strings.ToLower(name),
 		port:        port,
-		dialOptions: tracing.GRPCDialTracingOptions(),
+		dialOptions: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
 		options:     []runtime.ServeMuxOption{},
 		filePaths:   []filePath{},
 		handlers:    []HandleChainFunc{},

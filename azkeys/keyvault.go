@@ -18,6 +18,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/2016-10-01/keyvault"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 // KeyVault is the azure keyvault client for interacting with keyvault keys
@@ -67,6 +68,9 @@ func (kv *KeyVault) GetLatestKey(
 		return keyvault.KeyBundle{}, err
 	}
 
+	span, ctx := tracing.StartSpanFromContext(ctx, "KeyVault GetKey")
+	defer span.Finish()
+
 	key, err := kvClient.GetKey(ctx, kv.url, keyName, "")
 	if err != nil {
 		return keyvault.KeyBundle{}, fmt.Errorf("failed to read key: %w", err)
@@ -90,11 +94,16 @@ func (kv *KeyVault) GetKeyVersionsKeys(
 		return []keyvault.KeyBundle{}, err
 	}
 
+	span, ctx := tracing.StartSpanFromContext(ctx, "KeyVault GetKeyVersions")
+	defer span.Finish()
+
 	pageLimit := int32(1)
 	keyVersions, err := kvClient.GetKeyVersions(ctx, kv.url, keyID, &pageLimit)
 	if err != nil {
 		return []keyvault.KeyBundle{}, fmt.Errorf("failed to read key: %w", err)
 	}
+
+	span.Finish()
 
 	keyVersionValues := keyVersions.Values()
 
@@ -191,6 +200,9 @@ func (kv *KeyVault) Sign(
 	keyName := GetKeyName(keyID)
 	keyVersion := GetKeyVersion(keyID)
 
+	span, ctx := tracing.StartSpanFromContext(ctx, "KeyVault Sign")
+	defer span.Finish()
+
 	signatureb64, err := kvClient.Sign(ctx, kv.url, keyName, keyVersion, params)
 	if err != nil {
 		return []byte{}, fmt.Errorf("failed to sign payload: %w", err)
@@ -270,6 +282,9 @@ func (kv *KeyVault) Verify(
 		Signature: &signatureStr,
 		Digest:    &digestStr,
 	}
+
+	span, ctx := tracing.StartSpanFromContext(ctx, "KeyVault Verify")
+	defer span.Finish()
 
 	result, err := kvClient.Verify(ctx, kv.url, keyID, keyVersion, params)
 	if err != nil {

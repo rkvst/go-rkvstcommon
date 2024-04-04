@@ -10,16 +10,13 @@ import (
 	"net/textproto"
 	"os"
 	"strings"
+	"time"
 
-	grpc_otrace "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	otnethttp "github.com/opentracing-contrib/go-stdlib/nethttp"
 	opentracing "github.com/opentracing/opentracing-go"
 
 	"github.com/datatrails/go-datatrails-common/environment"
 	"github.com/datatrails/go-datatrails-common/logger"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-	grpcHealth "google.golang.org/grpc/health/grpc_health_v1"
 
 	zipkinot "github.com/openzipkin-contrib/zipkin-go-opentracing"
 	zipkin "github.com/openzipkin/zipkin-go"
@@ -48,22 +45,26 @@ var otHeaders = []string{
 	flags,
 }
 
+func valueFromCarrier(carrier opentracing.TextMapCarrier, key string) string {
+	value, found := carrier[key]
+	if !found || value == "" {
+		return ""
+	}
+	return value
+}
+
 func TraceIDFromContext(ctx context.Context) string {
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
 		return ""
 	}
-	traceState := make(map[string]string)
-	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, traceState)
+	carrier := opentracing.TextMapCarrier{}
+	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, carrier)
 	if err != nil {
 		return ""
 	}
 
-	traceID, found := traceState[TraceID]
-	if !found || traceID == "" {
-		return ""
-	}
-	return traceID
+	return valueFromCarrier(carrier, TraceID)
 }
 
 func NewSpanContext(ctx context.Context, operationName string) (opentracing.Span, context.Context) {
@@ -79,7 +80,8 @@ func StartSpanFromContext(ctx context.Context, name string, options ...opentraci
 
 	log := logger.Sugar.FromContext(ctx)
 	defer log.Close()
-	log.Debugf("tracing.StartSpanFromContext")
+
+	log.Debugf("tracing.StartSpanFromContext: %s", name)
 
 	tags := make(map[string]interface{})
 	tags["component"] = "DATATRAILS"
@@ -97,24 +99,6 @@ func HTTPMiddleware(h http.Handler) http.Handler {
 	)
 }
 
-func tracingFilter(ctx context.Context, fullMethodName string) bool {
-	if fullMethodName == grpcHealth.Health_Check_FullMethodName {
-		return false
-	}
-	return true
-}
-
-// GRPCDialTracingOptions returns DialOption enabling open tracing for grpc connections
-func GRPCDialTracingOptions() []grpc.DialOption {
-	return []grpc.DialOption{
-		grpc.WithStreamInterceptor(
-			grpc_otrace.StreamClientInterceptor()),
-		grpc.WithUnaryInterceptor(
-			grpc_otrace.UnaryClientInterceptor(grpc_otrace.WithFilterFunc(tracingFilter))),
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
-	}
-}
-
 // HeaderMatcher ensures that open tracing headers x-b3-* are forwarded to output requests
 func HeaderMatcher(key string) (string, bool) {
 	key = textproto.CanonicalMIMEHeaderKey(key)
@@ -129,7 +113,8 @@ func HeaderMatcher(key string) (string, bool) {
 func trimPodName(p string) string {
 	a := strings.Split(p, "-")
 	i := len(a)
-	if i > 2 {
+
+	if len(a[(i-1)]) == 5 && (len(a[(i-2)]) == 10 || len(a[(i-2)]) == 11) {
 		return strings.Join(a[:i-2], "-")
 	}
 	if i > 1 {
@@ -178,18 +163,29 @@ func New(service string, host string, zipkinEndpoint string) io.Closer {
 	localEndpoint, err := zipkin.NewEndpoint(service, host)
 	if err != nil {
 		logger.Sugar.Panicf("unable to create zipkin local endpoint service '%s' - host '%s': %v", service, host, err)
-
 	}
 
 	// set up a span reporter
 	zipkinLogger := log.New(os.Stdout, "zipkin", log.Ldate|log.Ltime|log.Lmicroseconds|log.Llongfile)
 	reporter := zipkinhttp.NewReporter(zipkinEndpoint, zipkinhttp.Logger(zipkinLogger))
 
-	// initialise our tracer
+	// TODO: One day this should probably be configurable in helm for each service
+	// For now capture 1 in every 5 traces
+	rate := 0.2
+
+	// This sampler is only used when a service creates new traces (which is rare, only if
+	// not recieving messages or presenting callable endpoints, e.g. a cron like service)
+	sampler, err := zipkin.NewBoundarySampler(rate, time.Now().UnixNano())
+	if err != nil {
+		logger.Sugar.Panicf("unable to create zipkin sampler: rate %f: %v", rate, err)
+	}
+
+	// initialise the tracer
 	nativeTracer, err := zipkin.NewTracer(
 		reporter,
 		zipkin.WithLocalEndpoint(localEndpoint),
 		zipkin.WithSharedSpans(false),
+		zipkin.WithSampler(sampler),
 	)
 	if err != nil {
 		logger.Sugar.Panicf("unable to create zipkin tracer: %v", err)

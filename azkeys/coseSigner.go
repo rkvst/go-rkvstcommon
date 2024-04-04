@@ -64,6 +64,7 @@ func (f *KeyVaultCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Contex
 	locationHashString := hex.EncodeToString(locationHash)[:6]
 
 	kv := KeyVaultCoseSigner{
+		ctx:     ctx,
 		keyName: f.keyName,
 		alg:     keyvault.ES384, // hardwired for the moment, add caller setting when needed
 		KeyVault: &KeyVault{
@@ -89,6 +90,7 @@ func (f *KeyVaultCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Contex
 // KeyVaultCoseSigner is the azure keyvault client for interacting with keyvault keys
 // using a cose.Signer interface
 type KeyVaultCoseSigner struct {
+	ctx                context.Context
 	keyName            string
 	alg                keyvault.JSONWebKeySignatureAlgorithm
 	key                keyvault.KeyBundle
@@ -154,7 +156,7 @@ func (kv *KeyVaultCoseSigner) PublicKey() (*ecdsa.PublicKey, error) {
 
 // Sign signs a given content
 func (kv *KeyVaultCoseSigner) Sign(rand io.Reader, content []byte) ([]byte, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	ctx, cancel := context.WithTimeout(kv.ctx, 30*time.Second)
 	defer cancel()
 
 	signature, err := kv.KeyVault.HashAndSign(

@@ -25,23 +25,29 @@ func StatusError(ctx context.Context, c codes.Code, fmt string, opts ...any) err
 }
 
 func StatusWithRequestInfoFromContext(ctx context.Context, s *Status) *Status {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
+
 	traceID := tracing.TraceIDFromContext(ctx)
 	if traceID == "" {
-		logger.Sugar.Infof("no traceID in context")
+		log.Infof("no traceID in context")
 		return s
 	}
-	logger.Sugar.Debugf("traceID %s", traceID)
+	// log.Debugf("status traceID %s", traceID)
 	st, err := s.WithDetails(&errdetails.RequestInfo{
 		RequestId: traceID,
 	})
 	if err != nil {
-		logger.Sugar.Infof("cannot add traceID %s: %v", traceID, err)
+		log.Infof("cannot add traceID %s: %v", traceID, err)
 		return s
 	}
 	return st
 }
 
-func StatusWithQuotaFailure(subject string, label string, name string) *Status {
+func StatusWithQuotaFailure(ctx context.Context, subject string, label string, name string) *Status {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
+
 	s := NewStatus(codes.Unimplemented, "%s %s %s", subject, label, name)
 	violation := errdetails.QuotaFailure_Violation{
 		Subject:     subject,
@@ -53,7 +59,7 @@ func StatusWithQuotaFailure(subject string, label string, name string) *Status {
 		},
 	})
 	if err != nil {
-		logger.Sugar.Infof("cannot add quota failure %s: %v", subject, err)
+		log.Infof("cannot add quota failure %s: %v", subject, err)
 		return s
 	}
 	return st

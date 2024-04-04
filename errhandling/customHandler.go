@@ -21,7 +21,7 @@ const (
 func SetQuotaReached(ctx context.Context, tenantID string, name string) error {
 	return StatusWithRequestInfoFromContext(
 		ctx,
-		StatusWithQuotaFailure(tenantID, QuotaReached, name),
+		StatusWithQuotaFailure(ctx, tenantID, QuotaReached, name),
 	).Err()
 }
 
@@ -29,7 +29,7 @@ func SetQuotaReached(ctx context.Context, tenantID string, name string) error {
 func SetQuotaUnknown(ctx context.Context, tenantID string, name string, err error) error {
 	return StatusWithRequestInfoFromContext(
 		ctx,
-		StatusWithQuotaFailure(tenantID, QuotaUnknown, fmt.Sprintf("%s: %v", name, err)),
+		StatusWithQuotaFailure(ctx, tenantID, QuotaUnknown, fmt.Sprintf("%s: %v", name, err)),
 	).Err()
 }
 
@@ -48,7 +48,7 @@ func NewB2CErrorHandler(fallback runtime.ErrorHandlerFunc) runtime.ErrorHandlerF
 	) {
 
 		// if its a b2c error then handle it separately
-		if b2cErr, localErr := GetErrB2c(err); localErr == nil {
+		if b2cErr, localErr := GetErrB2c(ctx, err); localErr == nil {
 			w.Header().Set("Content-Type", "application/json; charset=utf-8")
 			w.WriteHeader(b2cErr.Status)
 
@@ -110,11 +110,14 @@ func NewHTTPErrorHandler(fallback runtime.ErrorHandlerFunc) runtime.ErrorHandler
 		r *http.Request,
 		err error,
 	) {
-		logger.Sugar.Debugf("Error received: %v", err)
+		log := logger.Sugar.FromContext(ctx)
+		defer log.Close()
+
+		log.Debugf("Error received: %v", err)
 
 		switch {
 		case checkFor402(err):
-			logger.Sugar.Debugf("Change to 402")
+			log.Debugf("Change to 402")
 			httpStatus := http.StatusPaymentRequired
 			err = &runtime.HTTPStatusError{
 				HTTPStatus: httpStatus,
@@ -125,7 +128,7 @@ func NewHTTPErrorHandler(fallback runtime.ErrorHandlerFunc) runtime.ErrorHandler
 				),
 			}
 		case checkFor500(err):
-			logger.Sugar.Debugf("Change to 500")
+			log.Debugf("Change to 500")
 			httpStatus := http.StatusInternalServerError
 			err = &runtime.HTTPStatusError{
 				HTTPStatus: httpStatus,

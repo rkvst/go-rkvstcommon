@@ -117,8 +117,10 @@ func (r *Resource) limitKey(tenantID string) string {
 
 // setOperation runs a specific `SET` operation for redis.
 func (r *Resource) setOperation(ctx context.Context, operation string, tenantID string, arg int64) error {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
 
-	logger.Sugar.Debugf("resource operation %s", operation)
+	log.Debugf("resource operation %s", operation)
 
 	// only pass string arguments to redis
 	strArg := parseArg(arg)
@@ -145,7 +147,7 @@ func (r *Resource) setOperation(ctx context.Context, operation string, tenantID 
 		return err
 	}
 
-	logger.Sugar.Debugf("Redis Resource %s: '%s'", operation, path)
+	log.Debugf("Redis Resource %s: '%s'", operation, path)
 	return err
 }
 
@@ -153,6 +155,8 @@ func (r *Resource) setOperation(ctx context.Context, operation string, tenantID 
 //
 //	`INCR`, `DECR` and `GET`.
 func (r *Resource) getOperation(ctx context.Context, operation string, tenantID string) (int64, error) {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
 
 	// process the operation, expect format to be 'OP_ID' eg. 'GET_limit'
 	op := strings.Split(operation, "_")[0]
@@ -179,7 +183,7 @@ func (r *Resource) getOperation(ctx context.Context, operation string, tenantID 
 		return int64(0), err
 	}
 
-	logger.Sugar.Debugf("Redis Resource %s: '%s' %d", operation, path, result)
+	log.Debugf("Redis Resource %s: '%s' %d", operation, path, result)
 	return result, nil
 }
 
@@ -193,13 +197,16 @@ func parseArg(arg int64) string {
 // Limited returns true if the limit is enabled. The current limit
 // is retrieved from upstream if necessary using the Limiter method.
 func (r *Resource) Limited(ctx context.Context, tenantID string) bool {
-	logger.Sugar.Debugf("Resource Limited %s", tenantID)
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
+
+	log.Debugf("Resource Limited %s", tenantID)
 	limited := true
 
 	var limits *tenantLimit
 	limits, ok := r.tenantLimits[tenantID]
 	if !ok {
-		logger.Sugar.Debugf("Create tenantLimits %s", tenantID)
+		log.Debugf("Create tenantLimits %s", tenantID)
 		r.tenantLimits[tenantID] = &tenantLimit{
 			lastRefreshTime: time.Now(),
 		}
@@ -216,25 +223,25 @@ func (r *Resource) Limited(ctx context.Context, tenantID string) bool {
 	}
 
 	// we do not need to pull from upstream the local limit will do
-	logger.Sugar.Debugf("elapsed %v refreshTTL %v lastRefreshCount %d refreshCount %d",
+	log.Debugf("elapsed %v refreshTTL %v lastRefreshCount %d refreshCount %d",
 		elapsed, r.refreshTTL, limits.lastRefreshCount, r.refreshCount,
 	)
 	if elapsed < r.refreshTTL && limits.lastRefreshCount < r.refreshCount {
-		logger.Sugar.Debugf("TTL is still ok %s %d", tenantID, limit)
+		log.Debugf("TTL is still ok %s %d", tenantID, limit)
 		return limit >= 0
 	}
 
 	// pull from upstream
-	logger.Sugar.Infof("Get limit from tenancies service %s %s", r.name, tenantID)
+	log.Infof("Get limit from tenancies service %s %s", r.name, tenantID)
 	newLimit, err := r.resourceLimiter(ctx, r, tenantID)
 	if err != nil {
-		logger.Sugar.Infof("Unable to get upstream limit %s: %v", r.name, err)
+		log.Infof("Unable to get upstream limit %s: %v", r.name, err)
 		// return whatever the old limit was, as we can't get hold of the new limit
 		return limit >= 0
 	}
 
 	// reset the refresh triggers
-	logger.Sugar.Debugf("Reset the refresh triggers")
+	log.Debugf("Reset the refresh triggers")
 	limits.lastRefreshCount = 0
 	limits.lastRefreshTime = time.Now()
 
@@ -244,7 +251,7 @@ func (r *Resource) Limited(ctx context.Context, tenantID string) bool {
 		return limit >= 0
 	}
 
-	logger.Sugar.Infof("new limit now %d (from %d)", newLimit, limit)
+	log.Infof("new limit now %d (from %d)", newLimit, limit)
 
 	// check if the new limit is unlimited
 	if newLimit == -1 {
@@ -252,10 +259,10 @@ func (r *Resource) Limited(ctx context.Context, tenantID string) bool {
 	}
 
 	// set the new limit
-	logger.Sugar.Debugf("Set Redis %s %d", tenantID, limit)
+	log.Debugf("Set Redis %s %d", tenantID, limit)
 	err = r.setOperation(ctx, opSetLimit, tenantID, newLimit)
 	if err != nil {
-		logger.Sugar.Infof("failed to set new limit: %v", err)
+		log.Infof("failed to set new limit: %v", err)
 		// return whatever the old limit was, as we can't set the new limit
 		return limit >= 0
 	}
@@ -265,12 +272,14 @@ func (r *Resource) Limited(ctx context.Context, tenantID string) bool {
 
 // getLimit gets the limit for a given tenant, attempt first from redis, then upstream.
 func (r *Resource) getLimit(ctx context.Context, tenantID string) (int64, error) {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
 
 	// if we have found the limit via redis, then return
-	logger.Sugar.Debugf("GetLimit From Redis %s", tenantID)
+	log.Debugf("GetLimit From Redis %s", tenantID)
 	limit, err := r.getOperation(ctx, opGetLimit, tenantID)
 	if err == nil {
-		logger.Sugar.Debugf("GetLimit From Redis success %s %d", tenantID, limit)
+		log.Debugf("GetLimit From Redis success %s %d", tenantID, limit)
 		return limit, nil
 	}
 	// we haven't got the redis limit therefore attempt to retrieve from upstream
@@ -279,20 +288,22 @@ func (r *Resource) getLimit(ctx context.Context, tenantID string) (int64, error)
 
 // refreshLimit gets the limit for a given tenant from upstream.
 func (r *Resource) refreshLimit(ctx context.Context, tenantID string) (int64, error) {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
 
-	logger.Sugar.Debugf("RefreshLimit From Tenancies %s", tenantID)
+	log.Debugf("RefreshLimit From Tenancies %s", tenantID)
 	limit, err := r.resourceLimiter(ctx, r, tenantID)
 	if err != nil {
-		logger.Sugar.Infof("cannot Get From Tenancies %s %s: %v", tenantID, r.name, err)
+		log.Infof("cannot Get From Tenancies %s %s: %v", tenantID, r.name, err)
 		return int64(0), err
 	}
 
 	// now we have the upstream value, try and set it in redis
-	logger.Sugar.Debugf("SetLimit Redis %s %d", tenantID, limit)
+	log.Debugf("SetLimit Redis %s %d", tenantID, limit)
 	err = r.setOperation(ctx, opSetLimit, tenantID, limit)
 	if err != nil {
 		// only log error, as we have the upstream limit
-		logger.Sugar.Infof("failed to set limit: %v", err)
+		log.Infof("failed to set limit: %v", err)
 	}
 
 	return limit, nil

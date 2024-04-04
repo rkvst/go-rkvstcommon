@@ -7,10 +7,10 @@ import (
 )
 
 func (r *Receiver) handleReceivedMessageWithTracingContext(ctx context.Context, message *ReceivedMessage, handler Handler) (Disposition, context.Context, error) {
-	log := r.log.FromContext(ctx)
-	defer log.Close()
+	// We don't have the tracing span info on the context yet, that is what this function will add
+	// we we log using the reciever logger
+	r.log.Debugf("ContextFromReceivedMessage(): ApplicationProperties %v", message.ApplicationProperties)
 
-	log.Debugf("ContextFromReceivedMessage(): ApplicationProperties %v", message.ApplicationProperties)
 	var opts = []opentracing.StartSpanOption{}
 	carrier := opentracing.TextMapCarrier{}
 	// This just gets all the message Application Properties into a string map. That map is then passed into the
@@ -18,7 +18,7 @@ func (r *Receiver) handleReceivedMessageWithTracingContext(ctx context.Context, 
 	// It will ignore anything it doesn't care about. So the filtering of the map is done for us and
 	// we don't need to pre-filter it.
 	for k, v := range message.ApplicationProperties {
-		// XXX: why only string values?
+		// Tracing properties will be strings
 		value, ok := v.(string)
 		if ok {
 			carrier.Set(k, value)
@@ -26,7 +26,7 @@ func (r *Receiver) handleReceivedMessageWithTracingContext(ctx context.Context, 
 	}
 	spanCtx, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, carrier)
 	if err != nil {
-		log.Infof("handleReceivedMessageWithTracingContext(): Unable to extract span context: %v", err)
+		r.log.Infof("handleReceivedMessageWithTracingContext(): Unable to extract span context: %v", err)
 	} else {
 		opts = append(opts, opentracing.ChildOf(spanCtx))
 	}

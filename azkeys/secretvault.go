@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/services/keyvault/auth"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/datatrails/go-datatrails-common/logger"
+	"github.com/datatrails/go-datatrails-common/tracing"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -86,13 +87,18 @@ func NewKvClient(authorizer autorest.Authorizer) (keyvault.BaseClient, error) {
 func (k *SecretVault) ReadSecret(
 	ctx context.Context, id string,
 ) (*SecretEntry, error) {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
 
-	logger.Sugar.Infof("ReadSecret: %s %s", k.Name, id)
+	log.Infof("ReadSecret: %s %s", k.Name, id)
 
 	kvClient, err := NewKvClient(k.Authorizer)
 	if err != nil {
 		return nil, err
 	}
+
+	span, ctx := tracing.StartSpanFromContext(ctx, "KeyVault GetSecret")
+	defer span.Finish()
 
 	secret, err := kvClient.GetSecret(ctx, k.Name, id, "")
 	if err != nil {
@@ -118,17 +124,19 @@ func (k *SecretVault) ReadSecret(
 func (k *SecretVault) GetOrgKey(
 	ctx context.Context, id string,
 ) (*ecdsa.PrivateKey, error) {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
 
-	logger.Sugar.Infof("looking for a secret: %s", id)
+	log.Infof("looking for a secret: %s", id)
 	secret, err := k.ReadSecret(ctx, id)
 	if err != nil {
-		logger.Sugar.Infof("failed to get secret: %v", err)
+		log.Infof("failed to get secret: %v", err)
 		return nil, err
 	}
 
 	r, err := crypto.HexToECDSA(strings.TrimPrefix(*secret.Value, "0x"))
 	if err != nil {
-		logger.Sugar.Infof("could not do ecdsa from key: %v", err)
+		log.Infof("could not do ecdsa from key: %v", err)
 	}
 
 	return r, err
@@ -139,8 +147,10 @@ func (k *SecretVault) GetOrgKey(
 func (k *SecretVault) ListSecrets(
 	ctx context.Context, prefix string, tags map[string]string,
 ) (map[string]SecretEntry, error) {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.Close()
 
-	logger.Sugar.Debugf("ListSecrets")
+	log.Debugf("ListSecrets")
 
 	kvClient, err := NewKvClient(k.Authorizer)
 	if err != nil {
@@ -149,6 +159,9 @@ func (k *SecretVault) ListSecrets(
 
 	ctxo, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+
+	span, ctx := tracing.StartSpanFromContext(ctx, "KeyVault GetSecrets")
+	defer span.Finish()
 
 	// must be <= 25
 	maxResults := int32(25)
@@ -160,6 +173,8 @@ func (k *SecretVault) ListSecrets(
 	if err != nil {
 		return nil, fmt.Errorf("failed to read secrets: %w", err)
 	}
+
+	span.Finish()
 
 	results := map[string]SecretEntry{}
 	for {
@@ -179,7 +194,7 @@ func (k *SecretVault) ListSecrets(
 
 		// Only return secrets with the requested prefix
 		if !strings.HasPrefix(strings.TrimPrefix(addr.Path, "/secrets/"), prefix) {
-			logger.Sugar.Debugf("`%s' not a prefix of `%s'", prefix, strings.TrimPrefix(addr.Path, "/secrets/"))
+			log.Debugf("`%s' not a prefix of `%s'", prefix, strings.TrimPrefix(addr.Path, "/secrets/"))
 
 			if err = secrets.NextWithContext(ctxo); err != nil {
 				return nil, err
@@ -193,7 +208,7 @@ func (k *SecretVault) ListSecrets(
 		for k, matchV := range tags {
 			v, ok := item.Tags[k]
 			if !ok || v == nil || matchV != *v {
-				logger.Sugar.Debugf(
+				log.Debugf(
 					"skipping key, tag `%s' missing or `%v' != `%s'", k, v, matchV)
 				matched = false
 				break

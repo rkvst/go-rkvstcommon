@@ -261,13 +261,13 @@ func (wl *WrappedLogger) FromContext(ctx context.Context) *WrappedLogger {
 
 	span := opentracing.SpanFromContext(ctx)
 	if span == nil {
-		Sugar.Debugf("FromContext: span is nil")
+		Sugar.WithOptions(zap.AddCallerSkip(1)).Infof("FromContext: span is nil - this should not happen - the context where this happened is missing tracing content - probably a middleware problem")
 		return wl
 	}
 	carrier := opentracing.TextMapCarrier{}
 	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, carrier)
 	if err != nil {
-		Sugar.Debugf("FromContext: can't inject span: %v", err)
+		Sugar.Infof("FromContext: can't inject span: %v", err)
 		return wl
 	}
 
@@ -294,13 +294,13 @@ func (wl *WrappedLogger) WithServiceName(servicename string) *WrappedLogger {
 
 func (wl *WrappedLogger) WithIndex(key, value string) *WrappedLogger {
 	return &WrappedLogger{
-		SugaredLogger: wl.With(zap.String(key, strings.ToLower(value))),
+		wl.SugaredLogger.With(zap.String(key, strings.ToLower(value))),
 	}
 }
 
 func (wl *WrappedLogger) WithOptions(opts ...Option) *WrappedLogger {
 	s := &WrappedLogger{
-		Plain.WithOptions(opts...).Sugar(),
+		wl.SugaredLogger.WithOptions(opts...),
 	}
 	return s
 }
