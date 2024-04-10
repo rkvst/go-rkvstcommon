@@ -9,13 +9,17 @@ import (
 	otrace "github.com/opentracing/opentracing-go"
 )
 
-func NewSimpleResource(name string, cfg RedisConfig, resType string) (*SimpleResource, error) {
+// NewJsonResource constructs a new instance of JsonResource, given the configuration.
+//   - name: name of the resource
+//   - resType: the general type of resource, mostly to help with organisation
+//   - cfg: the Redis cluster configuration to use
+func NewJsonResource(name string, cfg RedisConfig, resType string) (*JsonResource, error) {
 	client, err := NewRedisClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create redis client: %w", err)
 	}
 
-	return &SimpleResource{
+	return &JsonResource{
 		ClientContext: ClientContext{
 			cfg:  cfg,
 			name: name,
@@ -25,26 +29,30 @@ func NewSimpleResource(name string, cfg RedisConfig, resType string) (*SimpleRes
 	}, nil
 }
 
-// SimpleResource
-type SimpleResource struct {
+// JsonResource is a Redis resource holding an object in JSON
+type JsonResource struct {
 	ClientContext
 	client    Client
 	keyPrefix string
 }
 
-func (r *SimpleResource) URL() string {
+// URL gets the configured Redis URL
+func (r *JsonResource) URL() string {
 	return r.cfg.URL()
 }
 
-func (r *SimpleResource) Name() string {
+// Name gets the name of the resource
+func (r *JsonResource) Name() string {
 	return r.name
 }
 
-func (r *SimpleResource) Key(tenantID string) string {
+// Key gets the full resource identification key
+func (r *JsonResource) Key(tenantID string) string {
 	return r.keyPrefix + "/" + tenantID
 }
 
-func (r *SimpleResource) Set(ctx context.Context, tenantID string, value any) error {
+// Set takes a JSON-serializable value, marshals it, and stores it for the given tenantID
+func (r *JsonResource) Set(ctx context.Context, tenantID string, value any) error {
 	span, ctx := otrace.StartSpanFromContext(ctx, "redis.resource.setOperation.Set")
 	defer span.Finish()
 
@@ -62,7 +70,9 @@ func (r *SimpleResource) Set(ctx context.Context, tenantID string, value any) er
 	return nil
 }
 
-func (r *SimpleResource) Get(ctx context.Context, tenantID string, target any) error {
+// Get reads the resource for the given tenantID, and unmarshals it into target (which must be a
+// pointer to a suitable empty struct.)
+func (r *JsonResource) Get(ctx context.Context, tenantID string, target any) error {
 	span, ctx := otrace.StartSpanFromContext(ctx, "redis.resource.getOperation.Do")
 	defer span.Finish()
 
