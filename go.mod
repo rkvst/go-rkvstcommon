@@ -48,6 +48,8 @@ require (
 
 require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
+	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
+	github.com/alicebob/miniredis/v2 v2.32.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
@@ -64,6 +66,7 @@ require (
 	github.com/prometheus/procfs v0.6.0 // indirect
 	github.com/shengdoushi/base58 v1.0.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 )
 
 require (
