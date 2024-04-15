@@ -11,10 +11,10 @@ import (
 )
 
 // NewTestResource sets up a fresh instance of miniredis and returns a configured JsonResource
-func NewTestResource(t *testing.T) JsonResource {
+func NewTestResource(t *testing.T) *JsonResource {
 	mr := miniredis.RunT(t)
 	c := redis.NewClient(&redis.Options{Addr: mr.Addr()})
-	return JsonResource{
+	return &JsonResource{
 		client: c,
 		ClientContext: ClientContext{
 			cfg:  &clusterConfig{},
@@ -39,8 +39,8 @@ func TestRoundtrip(t *testing.T) {
 	setErr := resource.Set(context.TODO(), "tenant/1", &TestStruct{Foo: "hello world", Bar: 1337})
 	require.NoError(t, setErr)
 
-	result := &TestStruct{}
-	getErr := resource.Get(context.TODO(), "tenant/1", result)
+	result := TestStruct{}
+	getErr := resource.Get(context.TODO(), "tenant/1", &result)
 	require.NoError(t, getErr)
 
 	require.Equal(t, "hello world", result.Foo)
@@ -63,7 +63,7 @@ func TestExpectedUnmarshalError(t *testing.T) {
 		Bar string
 	}
 
-	result := &OtherTestStruct{}
-	getErr := resource.Get(context.TODO(), "tenant/1", result)
+	result := OtherTestStruct{}
+	getErr := resource.Get(context.TODO(), "tenant/1", &result)
 	require.Error(t, getErr)
 }
