@@ -157,7 +157,7 @@ func (k *SecretVault) ListSecrets(
 		return nil, err
 	}
 
-	ctxo, cancel := context.WithTimeout(ctx, 30*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
 	span, ctx := tracing.StartSpanFromContext(ctx, "KeyVault GetSecrets")
@@ -166,7 +166,7 @@ func (k *SecretVault) ListSecrets(
 	// must be <= 25
 	maxResults := int32(25)
 	secrets, err := kvClient.GetSecretsComplete(
-		ctxo,
+		ctx,
 		k.Name,
 		&maxResults,
 	)
@@ -186,7 +186,7 @@ func (k *SecretVault) ListSecrets(
 
 		addr, err := url.Parse(*item.ID)
 		if err != nil {
-			if err = secrets.NextWithContext(ctxo); err != nil {
+			if err = secrets.NextWithContext(ctx); err != nil {
 				return nil, err
 			}
 			continue
@@ -196,7 +196,7 @@ func (k *SecretVault) ListSecrets(
 		if !strings.HasPrefix(strings.TrimPrefix(addr.Path, "/secrets/"), prefix) {
 			log.Debugf("`%s' not a prefix of `%s'", prefix, strings.TrimPrefix(addr.Path, "/secrets/"))
 
-			if err = secrets.NextWithContext(ctxo); err != nil {
+			if err = secrets.NextWithContext(ctx); err != nil {
 				return nil, err
 			}
 			continue
@@ -215,7 +215,7 @@ func (k *SecretVault) ListSecrets(
 			}
 		}
 		if !matched {
-			if err = secrets.NextWithContext(ctxo); err != nil {
+			if err = secrets.NextWithContext(ctx); err != nil {
 				return nil, err
 			}
 			continue
@@ -233,7 +233,7 @@ func (k *SecretVault) ListSecrets(
 			}
 		}
 
-		err = secrets.NextWithContext(ctxo)
+		err = secrets.NextWithContext(ctx)
 		if err != nil {
 			return nil, err
 		}
