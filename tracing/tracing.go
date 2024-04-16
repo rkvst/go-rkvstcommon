@@ -114,10 +114,16 @@ func trimPodName(p string) string {
 	a := strings.Split(p, "-")
 	i := len(a)
 
+	// We want the pod name without the trailing instance ID components
+	// There can be either two ID components (length 10 or 11 and 5) or
+	// just one (length 5)
+
 	if len(a[(i-1)]) == 5 && (len(a[(i-2)]) == 10 || len(a[(i-2)]) == 11) {
+		// this has two instnace ID components so strip them
 		return strings.Join(a[:i-2], "-")
 	}
 	if i > 1 {
+		// otherwise just strip one
 		return strings.Join(a[:i-1], "-")
 	}
 	return p

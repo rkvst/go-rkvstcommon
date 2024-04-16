@@ -63,6 +63,7 @@ func WithListPrefix(prefix string) Option {
 	}
 }
 
+// WithListMaxResults adds an option to limit the page size, default at time of writing 5000
 func WithListMaxResults(maxResults int32) Option {
 	return func(a *StorerOptions) {
 		a.listMaxResults = maxResults

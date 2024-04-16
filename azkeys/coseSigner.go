@@ -90,6 +90,11 @@ func (f *KeyVaultCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Contex
 // KeyVaultCoseSigner is the azure keyvault client for interacting with keyvault keys
 // using a cose.Signer interface
 type KeyVaultCoseSigner struct {
+	// "We should not "Contexts should not be stored inside a struct type, but instead
+	// passed to each function that needs it."
+	// In this case this struct is transient and request scoped and the interface to the
+	// methods does not include a context (and is outside of our control being defined
+	// in the cose package).  We need the context for the logging ang tracing span.
 	ctx                context.Context
 	keyName            string
 	alg                keyvault.JSONWebKeySignatureAlgorithm
