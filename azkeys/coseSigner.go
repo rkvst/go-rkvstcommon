@@ -64,7 +64,10 @@ func (f *KeyVaultCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Contex
 	locationHashString := hex.EncodeToString(locationHash)[:6]
 
 	kv := KeyVaultCoseSigner{
-		ctx:     ctx,
+		// We remove any cancelation function from the context so that it is
+		// safe to stash it.  We must then not use this context for onward
+		// requests without adding a further timeout.
+		ctx:     context.WithoutCancel(ctx),
 		keyName: f.keyName,
 		alg:     keyvault.ES384, // hardwired for the moment, add caller setting when needed
 		KeyVault: &KeyVault{
@@ -90,7 +93,7 @@ func (f *KeyVaultCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Contex
 // KeyVaultCoseSigner is the azure keyvault client for interacting with keyvault keys
 // using a cose.Signer interface
 type KeyVaultCoseSigner struct {
-	// "We should not "Contexts should not be stored inside a struct type, but instead
+	// "Contexts should not be stored inside a struct type, but instead
 	// passed to each function that needs it."
 	// In this case this struct is transient and request scoped and the interface to the
 	// methods does not include a context (and is outside of our control being defined

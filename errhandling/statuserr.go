@@ -33,7 +33,6 @@ func StatusWithRequestInfoFromContext(ctx context.Context, s *Status) *Status {
 		log.Infof("no traceID in context")
 		return s
 	}
-	// log.Debugf("status traceID %s", traceID)
 	st, err := s.WithDetails(&errdetails.RequestInfo{
 		RequestId: traceID,
 	})
