@@ -21,6 +21,7 @@ require (
 	github.com/Azure/go-autorest/autorest v0.11.29
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.12
 	github.com/KimMachineGun/automemlimit v0.2.6
+	github.com/alicebob/miniredis/v2 v2.32.1
 	github.com/ethereum/go-ethereum v0.0.0-20221208112643-d318a5aa973a
 	github.com/fxamacker/cbor/v2 v2.5.0
 	github.com/go-redis/redis/v8 v8.11.5
@@ -30,14 +31,14 @@ require (
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.17.1
 	github.com/ldclabs/cose/go v0.0.0-20221214142927-d22c1cfc2154
-	github.com/lestrrat-go/jwx v1.2.28
+	github.com/lestrrat-go/jwx v1.2.29
 	github.com/nuts-foundation/go-did v0.6.4
 	github.com/opentracing-contrib/go-stdlib v1.0.0
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/openzipkin-contrib/zipkin-go-opentracing v0.5.0
 	github.com/openzipkin/zipkin-go v0.4.2
 	github.com/prometheus/client_golang v1.11.1
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/veraison/go-cose v1.1.0
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.25.0
@@ -49,7 +50,6 @@ require (
 require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
-	github.com/alicebob/miniredis/v2 v2.32.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
@@ -96,11 +96,11 @@ require (
 	github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
-	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
