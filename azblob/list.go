@@ -12,41 +12,80 @@ import (
 )
 
 // Count counts the number of blobs filtered by the given tags filter
-func (azp *Storer) Count(ctx context.Context, tagsFilter string) (int64, error) {
+func (azp *Storer) Count(ctx context.Context, tagsFilter string, opts ...Option) (int64, error) {
 
 	logger.Sugar.Debugf("Count")
 
-	blobs, err := azp.FilteredList(ctx, tagsFilter)
+	r, err := azp.FilteredList(ctx, tagsFilter, opts...)
 	if err != nil {
 		return 0, err
 	}
 
-	return int64(len(blobs)), nil
+	return int64(len(r.Items)), nil
+}
+
+type FilterResponse struct {
+	Marker ListMarker // nil if no more pages
+
+	// Standard request status things
+	StatusCode int // For If- header fails, err can be nil and code can be 304
+	Status     string
+
+	Items []*azStorageBlob.FilterBlobItem
 }
 
 // FilteredList returns a list of blobs filtered on their tag values.
 //
-// tagsFilter example: "dog='germanshepherd' and penguin='emperorpenguin'"
-// Returns all blobs with the specific tag filter
-func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string) ([]*azStorageBlob.FilterBlobItem, error) {
-	logger.Sugar.Debugf("FilteredList")
+// tagsFilter examples:
+//
+//	All blobs in a storage account
+//		"cat='tiger' AND penguin='emperorpenguin'"
+//	All blobs in a specific container
+//		"@container='zoo' AND cat='tiger' AND penguin='emperorpenguin'"
+//
+// Returns all blobs with the specific tag filter.
+func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string, opts ...Option) (*FilterResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "FilteredList")
+	defer span.Finish()
 
-	var filteredBlobs []*azStorageBlob.FilterBlobItem
 	var err error
 
-	result, err := azp.serviceClient.FindBlobsByTags(
-		ctx,
-		&azStorageBlob.ServiceFilterBlobsOptions{
-			Where: &tagsFilter,
-		},
-	)
-	if err != nil {
-		return filteredBlobs, err
+	options := &StorerOptions{}
+	for _, opt := range opts {
+		opt(options)
 	}
 
-	filteredBlobs = result.Blobs
+	if options.listMarker != nil {
+		span.SetTag("marker", *options.listMarker)
+	}
+	o := &azStorageBlob.ServiceFilterBlobsOptions{
+		Marker: options.listMarker,
+		Where:  &tagsFilter,
+	}
 
-	return filteredBlobs, err
+	if options.listMaxResults > 0 {
+		o.MaxResults = &options.listMaxResults
+		span.SetTag("maxResults", options.listMaxResults)
+	}
+
+	resp, err := azp.serviceClient.FindBlobsByTags(ctx, o)
+	if err != nil {
+		return nil, err
+	}
+
+	r := &FilterResponse{
+		StatusCode: resp.RawResponse.StatusCode,
+		Status:     resp.RawResponse.Status,
+		Marker:     resp.NextMarker,
+		Items:      resp.Blobs,
+	}
+
+	r.Marker = resp.NextMarker
+	if r.Marker != nil {
+		span.SetTag("nextmarker", *r.Marker)
+	}
+
+	return r, err
 }
 
 type ListerResponse struct {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/datatrails/go-datatrails-common/logger"
@@ -74,6 +75,9 @@ func NewDev(cfg DevConfig, container string) (*Storer, error) {
 		return nil, err
 	}
 
+	// normalise trailing slash
+	cfg.URL = strings.TrimSuffix(cfg.URL, "/") + "/"
+
 	azp := &Storer{
 		AccountName:   cfg.AccountName,
 		ResourceGroup: azuriteResourceGroup, // just for logging
@@ -84,9 +88,7 @@ func NewDev(cfg DevConfig, container string) (*Storer, error) {
 	}
 
 	azp.containerURL = fmt.Sprintf(
-		"%s%s",
-		cfg.URL,
-		container,
+		"%s%s", cfg.URL, container,
 	)
 	azp.serviceClient, err = azStorageBlob.NewServiceClientWithSharedKey(
 		cfg.URL,
