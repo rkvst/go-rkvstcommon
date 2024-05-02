@@ -20,7 +20,7 @@ type Reader interface {
 		identity string,
 		opts ...Option,
 	) (*ReaderResponse, error)
-
+	FilteredList(ctx context.Context, tagsFilter string, opts ...Option) (*FilterResponse, error)
 	List(ctx context.Context, opts ...Option) (*ListerResponse, error)
 }
 
