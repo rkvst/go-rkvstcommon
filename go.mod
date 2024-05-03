@@ -22,7 +22,6 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.12
 	github.com/KimMachineGun/automemlimit v0.2.6
 	github.com/alicebob/miniredis/v2 v2.32.1
-	github.com/ethereum/go-ethereum v0.0.0-20221208112643-d318a5aa973a
 	github.com/fxamacker/cbor/v2 v2.5.0
 	github.com/go-redis/redis/v8 v8.11.5
 	github.com/google/uuid v1.3.1
@@ -51,7 +50,6 @@ require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect

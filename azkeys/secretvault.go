@@ -2,7 +2,6 @@ package azkeys
 
 import (
 	"context"
-	"crypto/ecdsa"
 	"fmt"
 	"net/url"
 	"os"
@@ -14,7 +13,6 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/datatrails/go-datatrails-common/tracing"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -121,9 +119,9 @@ func (k *SecretVault) ReadSecret(
 	return entry, nil
 }
 
-func (k *SecretVault) GetOrgKey(
+func (k *SecretVault) GetOrgKeyHex(
 	ctx context.Context, id string,
-) (*ecdsa.PrivateKey, error) {
+) (*string, error) {
 	log := logger.Sugar.FromContext(ctx)
 	defer log.Close()
 
@@ -134,12 +132,7 @@ func (k *SecretVault) GetOrgKey(
 		return nil, err
 	}
 
-	r, err := crypto.HexToECDSA(strings.TrimPrefix(*secret.Value, "0x"))
-	if err != nil {
-		log.Infof("could not do ecdsa from key: %v", err)
-	}
-
-	return r, err
+	return secret.Value, err
 }
 
 // ListSecrets whose id's match prefix and whose tags include all of the

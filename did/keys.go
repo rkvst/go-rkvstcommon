@@ -5,44 +5,10 @@ import (
 	"crypto/ecdsa"
 	"crypto/ed25519"
 	"crypto/rsa"
-	"os"
 
 	"github.com/datatrails/go-datatrails-common/logger"
-	ethcrypto "github.com/ethereum/go-ethereum/crypto"
 	"github.com/lestrrat-go/jwx/jwk"
 )
-
-/**
- * Keys handles the keys found as part of DID verificationMethod's
- */
-
-// readRawECDSAPrivateKey reads a file containing a raw ecdsa private key in hex format and returns it
-func readRawECDSAPrivateKey(keyFile string) (*ecdsa.PrivateKey, error) {
-
-	pemKey, err := os.ReadFile(keyFile)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := getRawECDSAPrivateKey(pemKey)
-	if err != nil {
-		return nil, err
-	}
-
-	return key, err
-
-}
-
-// getRawECDSAPrivateKey gets an ECDSA private key from a given hex byte slice.
-func getRawECDSAPrivateKey(pemKey []byte) (*ecdsa.PrivateKey, error) {
-
-	privateKey, err := ethcrypto.HexToECDSA(string(pemKey))
-	if err != nil {
-		return nil, err
-	}
-
-	return privateKey, err
-}
 
 // jwkToPublicKey converts a jwk key into a public key
 // The following public keys are supported:
