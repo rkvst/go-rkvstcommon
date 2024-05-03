@@ -38,10 +38,22 @@ type FilterResponse struct {
 //
 // tagsFilter examples:
 //
-//	All blobs in a storage account
-//		"cat='tiger' AND penguin='emperorpenguin'"
-//	All blobs in a specific container
-//		"@container='zoo' AND cat='tiger' AND penguin='emperorpenguin'"
+//		 All tenants with more than one massif
+//		     "firstindex">'0000000000000000'
+//
+//		 All tenants whose logs have been updated since a particular idtimestamp
+//		     "lastid > '018e84dbbb6513a6'"
+//
+//	 note: in the case where you are making up the id timestamp from a time
+//	 reading, set the least significant 24 bits to zero and use the hex encoding
+//	 of the resulting value
+//
+//		All blobs in a storage account
+//			"cat='tiger' AND penguin='emperorpenguin'"
+//		All blobs in a specific container
+//			"@container='zoo' AND cat='tiger' AND penguin='emperorpenguin'"
+//
+// See also: https://learn.microsoft.com/en-us/rest/api/storageservices/find-blobs-by-tags-container?tabs=microsoft-entra-id
 //
 // Returns all blobs with the specific tag filter.
 func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string, opts ...Option) (*FilterResponse, error) {
