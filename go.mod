@@ -51,7 +51,6 @@ require (
 	github.com/Azure/go-amqp v1.0.0 // indirect
 	github.com/alicebob/gopher-json v0.0.0-20200520072559-a9ecdc9d1d3a // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/btcsuite/btcd v0.20.1-beta // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/lestrrat-go/backoff/v2 v2.0.8 // indirect
