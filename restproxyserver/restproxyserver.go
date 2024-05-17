@@ -13,7 +13,6 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -159,9 +158,9 @@ func WithAppendedDialOption(d DialOption) RESTProxyServerOption {
 }
 
 // WithPrependedDialOption prepends a grpc dial option.
-func WithPrependedDialOption(d DialOption) RESTProxyServerOption {
+func WithPrependedDialOptions(d ...DialOption) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
-		g.dialOptions = append([]DialOption{d}, g.dialOptions...)
+		g.dialOptions = append(d, g.dialOptions...)
 	}
 }
 
@@ -186,7 +185,7 @@ func New(log Logger, name string, port string, opts ...RESTProxyServerOption) RE
 	g := RESTProxyServer{
 		name:        strings.ToLower(name),
 		port:        port,
-		dialOptions: []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())},
+		dialOptions: []grpc.DialOption{},
 		options:     []runtime.ServeMuxOption{},
 		filePaths:   []filePath{},
 		handlers:    []HandleChainFunc{},
