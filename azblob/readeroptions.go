@@ -5,6 +5,8 @@ package azblob
 //	azblob readers
 type ReaderOptions struct {
 	accountName string
+
+	container string
 }
 
 type ReaderOption func(*ReaderOptions)
@@ -13,6 +15,13 @@ type ReaderOption func(*ReaderOptions)
 func WithAccountName(accountName string) ReaderOption {
 	return func(a *ReaderOptions) {
 		a.accountName = accountName
+	}
+}
+
+// WithContainer sets the azblob container
+func WithContainer(container string) ReaderOption {
+	return func(a *ReaderOptions) {
+		a.container = container
 	}
 }
 
