@@ -47,7 +47,7 @@ func NewReaderNoAuth(url string, opts ...ReaderOption) (Reader, error) {
 
 	var err error
 	if url == "" {
-		return nil, errors.New("url is are required parameters and neither can be empty")
+		return nil, errors.New("url is a required parameter and cannot be empty")
 	}
 
 	readerOptions := ParseReaderOptions(opts...)
