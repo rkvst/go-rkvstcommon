@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
-	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 /**
@@ -33,31 +32,30 @@ type Reader interface {
 //
 //	accountName: used only for logging purposes and may be empty
 //	url: The root path for the blob store requests, must not be empty
-//	container: To use the container client this must be provided. If absent only storage account level apis can be used
+//	opts: optional arguments specific to creating a reader with no auth
+//
+//	  * WithAccountName() - specifies the azblob account name for logging
 //
 // NOTE: due to having no credentials, this can only read from public blob storage.
 // or proxied private blob storage.
 //
 // example:
 //
-//	accountName: jitavid3b5fc07b9ae06f4e
-//	url: https://jitavid3b5fc07b9ae06f4e.blob.core.windows.net
-//	container: merklebuilder
-func NewReaderNoAuth(accountName string, url string, container string) (Reader, error) {
-	logger.Sugar.Infof(
-		"New Reader for url: %s, with accountName: %s, for container: %s",
-		url, accountName, container,
-	)
+//	url: https://app.datatrails.ai/verifiabledata
+//	container: merklelogs
+func NewReaderNoAuth(url string, container string, opts ...ReaderOption) (Reader, error) {
 
 	var err error
-	if url == "" {
-		return nil, errors.New("url is a required parameter and cannot be empty")
+	if url == "" || container == "" {
+		return nil, errors.New("url and container are required parameters and neither can be empty")
 	}
 
+	readerOptions := ParseReaderOptions(opts...)
+
 	azp := &Storer{
-		AccountName:   accountName, // just for logging
-		ResourceGroup: "",          // just for logging
-		Subscription:  "",          // just for logging
+		AccountName:   readerOptions.accountName, // just for logging
+		ResourceGroup: "",                        // just for logging
+		Subscription:  "",                        // just for logging
 		Container:     container,
 		credential:    nil,
 		rootURL:       url,
@@ -67,13 +65,7 @@ func NewReaderNoAuth(accountName string, url string, container string) (Reader, 
 		nil,
 	)
 	if err != nil {
-		logger.Sugar.Infof("unable to create serviceclient %s: %v", url, err)
 		return nil, err
-	}
-
-	if container == "" {
-		logger.Sugar.Infof("container not provided, container client not created")
-		return nil, nil
 	}
 
 	azp.containerURL = fmt.Sprintf(
@@ -83,7 +75,6 @@ func NewReaderNoAuth(accountName string, url string, container string) (Reader, 
 	)
 	azp.containerClient, err = azp.serviceClient.NewContainerClient(container)
 	if err != nil {
-		logger.Sugar.Infof("unable to create containerclient %s: %v", container, err)
 		return nil, err
 	}
 
