@@ -32,6 +32,27 @@ func NewK8Config(opts ...K8sOption) (*K8sConfig, error) {
 		GoVersion: runtime.Version(),
 	}
 
+	// first set the go mem limit
+	var err error
+	if options.logger != nil {
+
+		_, err = memlimit.SetGoMemLimitWithOpts(
+			memlimit.WithRatio(0.9),
+			memlimit.WithProvider(memlimit.FromCgroup),
+			memlimit.WithLogger(slog.Default()),
+		)
+	} else {
+
+		_, err = memlimit.SetGoMemLimitWithOpts(
+			memlimit.WithRatio(0.9),
+			memlimit.WithProvider(memlimit.FromCgroup),
+		)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
 	// Set CPU quota correctly so that stalls on non-existent cores do not occur.
 	// This must be done as early as possible on task startup - this way all services
 	// will have this behaviour as this method is called by everyone..
@@ -62,22 +83,11 @@ func NewK8Config(opts ...K8sOption) (*K8sConfig, error) {
 	k8Config.GoMaxProcs = runtime.GOMAXPROCS(-1)
 
 	// modified/removed and/or kubernetes limits set more cleverly.
-	var err error
-	if options.logger != nil {
 
-		memlimit.SetGoMemLimitWithOpts(
-			memlimit.WithRatio(0.9),
-			memlimit.WithProvider(memlimit.FromCgroup),
-			memlimit.WithLogger(slog.Default()),
-		)
+	if options.logger != nil {
 
 		undoMaxProcs, err = maxprocs.Set(maxprocs.Logger(options.logger))
 	} else {
-
-		memlimit.SetGoMemLimitWithOpts(
-			memlimit.WithRatio(0.9),
-			memlimit.WithProvider(memlimit.FromCgroup),
-		)
 
 		undoMaxProcs, err = maxprocs.Set()
 	}
