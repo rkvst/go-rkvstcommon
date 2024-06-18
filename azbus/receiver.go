@@ -21,6 +21,13 @@ type Handler interface {
 	Close()
 }
 
+// BatchHandler processes ReceivedMessages.
+type BatchHandler interface {
+	Handle(context.Context, []*ReceivedMessage) ([]Disposition, context.Context, error)
+	Open() error
+	Close()
+}
+
 const (
 	// RenewalTime is the how often we want to renew the message PEEK lock
 	//
@@ -82,11 +89,14 @@ type Receiver struct {
 
 	Cfg ReceiverConfig
 
-	log      Logger
-	mtx      sync.Mutex
-	receiver *azservicebus.Receiver
-	options  *azservicebus.ReceiverOptions
-	handlers []Handler
+	log                      Logger
+	mtx                      sync.Mutex
+	receiver                 *azservicebus.Receiver
+	options                  *azservicebus.ReceiverOptions
+	handlers                 []Handler
+	serialHandler            Handler
+	batchHandler             BatchHandler
+	numberOfReceivedMessages int // for serial or Batch Handler only
 }
 
 type ReceiverOption func(*Receiver)
@@ -95,6 +105,22 @@ type ReceiverOption func(*Receiver)
 func WithHandlers(h ...Handler) ReceiverOption {
 	return func(r *Receiver) {
 		r.handlers = append(r.handlers, h...)
+	}
+}
+
+// WithBatchHandler
+func WithBatchHandler(h BatchHandler, n int) ReceiverOption {
+	return func(r *Receiver) {
+		r.batchHandler = h
+		r.numberOfReceivedMessages = n
+	}
+}
+
+// WithSerialHandler
+func WithSerialHandler(h Handler, n int) ReceiverOption {
+	return func(r *Receiver) {
+		r.serialHandler = h
+		r.numberOfReceivedMessages = n
 	}
 }
 
@@ -165,6 +191,34 @@ func (r *Receiver) String() string {
 }
 
 // processMessage disposes of messages and emits 2 log messages detailing how long processing took.
+func (r *Receiver) processMessages(ctx context.Context, maxDuration time.Duration, messages []*ReceivedMessage, handler BatchHandler) {
+	count := len(messages)
+	now := time.Now()
+	dispositions, ctx, err := r.handleReceivedMessagesWithTracingContext(ctx, messages, handler)
+	for i, disp := range dispositions {
+		r.dispose(ctx, disp, err, messages[i])
+	}
+	duration := time.Since(now)
+
+	// Now we do have a tracing context we can use it for logging
+	log := r.log.FromContext(ctx)
+	defer log.Close()
+
+	log.Debugf("Processing messages %d took %s", len(messages), duration)
+
+	// This is safe because maxDuration is only defined if RenewMessageLock is false.
+	if !r.Cfg.RenewMessageLock && duration >= maxDuration {
+		log.Infof("WARNING: processing msg %d duration %v took more than %v seconds", count, duration, maxDuration)
+		log.Infof("WARNING: please either enable SERVICEBUS_RENEW_LOCK or reduce SERVICEBUS_INCOMING_MESSAGES")
+		log.Infof("WARNING: both can be found in the helm chart for each service.")
+	}
+	if errors.Is(err, ErrPeekLockTimeout) {
+		log.Infof("WARNING: processing msg %d duration %s returned error: %v", count, duration, err)
+		log.Infof("WARNING: please enable SERVICEBUS_RENEW_LOCK which can be found in the helm chart")
+	}
+}
+
+// processMessage disposes of message and emits 2 log messages detailing how long processing took.
 func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler Handler) {
 	now := time.Now()
 
@@ -226,7 +280,7 @@ func (r *Receiver) renewMessageLock(ctx context.Context, count int, msg *Receive
 	}
 }
 
-func (r *Receiver) receiveMessages() error {
+func (r *Receiver) receiveMessagesInParallel() error {
 
 	numberOfReceivedMessages := len(r.handlers)
 	r.log.Debugf(
@@ -294,6 +348,98 @@ func (r *Receiver) receiveMessages() error {
 	}
 }
 
+func (r *Receiver) receiveMessagesInSerial() error {
+
+	r.log.Debugf(
+		"NumberOfReceivedMessages %d, RenewMessageLock: %v",
+		r.numberOfReceivedMessages,
+		r.Cfg.RenewMessageLock,
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	for {
+		var err error
+		var messages []*ReceivedMessage
+		messages, err = r.receiver.ReceiveMessages(ctx, r.numberOfReceivedMessages, nil)
+		if err != nil {
+			azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
+			r.log.Infof("%s", azerr)
+			return azerr
+		}
+		total := len(messages)
+		r.log.Debugf("total messages %d", total)
+		var renewCtx context.Context
+		var renewCancel context.CancelFunc
+		var maxDuration time.Duration
+		// XXX: if the number of Received Messages is large (>10) then RenewMessageLock is required.
+		if r.Cfg.RenewMessageLock {
+			func() {
+				renewCtx, renewCancel = context.WithCancel(ctx)
+				defer renewCancel()
+				for i, msg := range messages {
+					go r.renewMessageLock(renewCtx, i+1, msg)
+				}
+				for i, msg := range messages {
+					r.processMessage(renewCtx, i+1, maxDuration, msg, r.serialHandler)
+				}
+			}()
+		} else {
+			for i, msg := range messages {
+				func() {
+					// we need a timeout per message if RenewMessageLock is disabled
+					renewCtx, renewCancel, maxDuration = r.setTimeout(ctx, r.log, msg)
+					defer renewCancel()
+					r.processMessage(renewCtx, i+1, maxDuration, msg, r.serialHandler)
+				}()
+			}
+		}
+	}
+}
+
+func (r *Receiver) receiveMessagesInBatch() error {
+
+	r.log.Debugf(
+		"NumberOfReceivedMessages %d, RenewMessageLock: %v",
+		r.numberOfReceivedMessages,
+		r.Cfg.RenewMessageLock,
+	)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	for {
+		var err error
+		var messages []*ReceivedMessage
+		messages, err = r.receiver.ReceiveMessages(ctx, r.numberOfReceivedMessages, nil)
+		if err != nil {
+			azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
+			r.log.Infof("%s", azerr)
+			return azerr
+		}
+		total := len(messages)
+		r.log.Debugf("total messages %d", total)
+		var renewCtx context.Context
+		var renewCancel context.CancelFunc
+		var maxDuration time.Duration
+		// XXX: if the number of Received Messages is large (>10) then RenewMessageLock is required.
+		func() {
+			if r.Cfg.RenewMessageLock {
+				renewCtx, renewCancel = context.WithCancel(ctx)
+				defer renewCancel()
+				for i, msg := range messages {
+					go r.renewMessageLock(renewCtx, i+1, msg)
+				}
+			} else {
+				// we need a timeout per message if RenewMessageLock is disabled - use first message
+				// for all messages
+				renewCtx, renewCancel, maxDuration = r.setTimeout(ctx, r.log, messages[0])
+				defer renewCancel()
+			}
+			r.processMessages(renewCtx, maxDuration, messages, r.batchHandler)
+		}()
+	}
+}
+
 // The following 2 methods satisfy the startup.Listener interface.
 func (r *Receiver) Listen() error {
 	r.log.Debugf("listen")
@@ -303,7 +449,13 @@ func (r *Receiver) Listen() error {
 		r.log.Infof("%s", azerr)
 		return azerr
 	}
-	return r.receiveMessages()
+	if r.batchHandler != nil {
+		return r.receiveMessagesInBatch()
+	}
+	if r.serialHandler != nil {
+		return r.receiveMessagesInSerial()
+	}
+	return r.receiveMessagesInParallel()
 }
 
 func (r *Receiver) Shutdown(ctx context.Context) error {
@@ -334,12 +486,25 @@ func (r *Receiver) open() error {
 		r.log.Infof("%s", azerr)
 		return azerr
 	}
-
 	r.receiver = receiver
-	for j := range len(r.handlers) {
-		err = r.handlers[j].Open()
+
+	switch {
+	case r.batchHandler != nil:
+		err = r.batchHandler.Open()
 		if err != nil {
-			return fmt.Errorf("failed to open handler: %w", err)
+			return fmt.Errorf("failed to open batch handler: %w", err)
+		}
+	case r.serialHandler != nil:
+		err = r.serialHandler.Open()
+		if err != nil {
+			return fmt.Errorf("failed to open serial handler: %w", err)
+		}
+	default:
+		for j := range len(r.handlers) {
+			err = r.handlers[j].Open()
+			if err != nil {
+				return fmt.Errorf("failed to open handler: %w", err)
+			}
 		}
 	}
 	return nil
@@ -356,11 +521,19 @@ func (r *Receiver) close_() {
 				azerr := fmt.Errorf("%s: Error closing receiver: %w", r, NewAzbusError(err))
 				r.log.Infof("%s", azerr)
 			}
-			r.receiver = nil
 			for j := range len(r.handlers) {
 				r.handlers[j].Close()
 			}
 			r.handlers = []Handler{}
+			if r.serialHandler != nil {
+				r.serialHandler.Close()
+				r.serialHandler = nil
+			}
+			if r.batchHandler != nil {
+				r.batchHandler.Close()
+				r.batchHandler = nil
+			}
+			r.receiver = nil
 		}
 	}
 }
