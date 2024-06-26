@@ -40,7 +40,6 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"github.com/datatrails/go-datatrails-common/logger"
 	otrace "github.com/opentracing/opentracing-go"
 )
 
@@ -147,11 +146,13 @@ func NewMonotonic(
 	opts ...MonotonicOption,
 ) Monotonic {
 
-	logger.Sugar.Debugf("'%s' Resource: '%s'", name, cfg.URL()) // assume at least one addr
+	log := cfg.Log()
+
+	log.Debugf("'%s' Resource: '%s'", name, cfg.URL()) // assume at least one addr
 
 	client, err := NewRedisClient(cfg)
 	if err != nil {
-		logger.Sugar.Panicf("bad redis config provided %v", err)
+		log.Panicf("bad redis config provided %v", err)
 	}
 
 	c := Monotonic{
@@ -182,20 +183,29 @@ func (c *Monotonic) Name() string {
 	return c.name
 }
 
+func (c *Monotonic) Log() Logger {
+	return c.cfg.Log()
+}
 func (c *Monotonic) URL() string {
 	return c.cfg.URL()
 }
 
 func (c *Monotonic) IncrN(ctx context.Context, tenantIDOrWallet string, n int64) (int64, error) {
-	logger.Sugar.Debugf("IncrN %s %d", tenantIDOrWallet, n)
+	log := c.Log().FromContext(ctx)
+	defer log.Close()
+
+	log.Debugf("IncrN %s %d", tenantIDOrWallet, n)
 	n, err := c.incrNEx(ctx, tenantIDOrWallet, n)
-	logger.Sugar.Debugf("IncrN = %d: err?=%v", n, err)
+	log.Debugf("IncrN = %d: err?=%v", n, err)
 	return n, err
 }
 func (c *Monotonic) SetGT(ctx context.Context, tenantIDOrWallet string, cas int64) (int64, error) {
-	logger.Sugar.Debugf("SetGT %s %d", tenantIDOrWallet, cas)
+	log := c.Log().FromContext(ctx)
+	defer log.Close()
+
+	log.Debugf("SetGT %s %d", tenantIDOrWallet, cas)
 	n, err := c.setGT(ctx, tenantIDOrWallet, cas)
-	logger.Sugar.Debugf("SetGT: err?=%v", err)
+	log.Debugf("SetGT: err?=%v", err)
 	return n, err
 }
 
@@ -208,23 +218,29 @@ func (c *Monotonic) countKey(tenantIDOrWallet string) string {
 }
 
 func (c *Monotonic) Del(ctx context.Context, tenantIDOrWallet string) error {
+	log := c.Log().FromContext(ctx)
+	defer log.Close()
+
 	key := c.countKey(tenantIDOrWallet)
 
 	span, ctx := otrace.StartSpanFromContext(ctx, "redis.counter.setOperation.Del")
 	defer span.Finish()
-	logger.Sugar.Debugf("Del %s", tenantIDOrWallet)
+	log.Debugf("Del %s", tenantIDOrWallet)
 	_, err := c.client.Del(ctx, key).Result()
 	if err != nil {
-		logger.Sugar.Debugf("Redis monotonic: Del %s: %v", key, err)
+		log.Debugf("Redis monotonic: Del %s: %v", key, err)
 		return err
 	}
-	logger.Sugar.Debugf("Del %s ok", tenantIDOrWallet)
+	log.Debugf("Del %s ok", tenantIDOrWallet)
 	return nil
 }
 
 // When used for tracking account nonces, this allows delayed transactions to
 // fill gaps and re-sync the nonce cache
 func (c *Monotonic) setGT(ctx context.Context, tenantIDOrWallet string, cas int64) (int64, error) {
+	log := c.Log().FromContext(ctx)
+	defer log.Close()
+
 	key := c.countKey(tenantIDOrWallet)
 	path := c.countPath(tenantIDOrWallet)
 
@@ -235,7 +251,7 @@ func (c *Monotonic) setGT(ctx context.Context, tenantIDOrWallet string, cas int6
 	count, err := c.setGTRunner.Run(
 		ctx, c.client, []string{key}, cas).Int64()
 	if err != nil {
-		logger.Sugar.Debugf("Redis monotonic: setGT %s: %v", path, err)
+		log.Debugf("Redis monotonic: setGT %s: %v", path, err)
 		return 0, err
 	}
 	// Happy path
@@ -244,6 +260,8 @@ func (c *Monotonic) setGT(ctx context.Context, tenantIDOrWallet string, cas int6
 
 // setNX runs a `SETNX` operation for redis.
 func (c *Monotonic) setNX(ctx context.Context, tenantIDOrWallet string, arg int64) (bool, error) {
+	log := c.Log().FromContext(ctx)
+	defer log.Close()
 
 	value := parseArg(arg)
 	// only pass string arguments to redis
@@ -255,18 +273,21 @@ func (c *Monotonic) setNX(ctx context.Context, tenantIDOrWallet string, arg int6
 	span, ctx := otrace.StartSpanFromContext(ctx, "redis.counter.setOperation.SetNX")
 	defer span.Finish()
 
-	logger.Sugar.Debugf("SetNX %s %v", tenantIDOrWallet, arg)
+	log.Debugf("SetNX %s %v", tenantIDOrWallet, arg)
 	result, err := c.client.SetNX(ctx, key, value, c.resetPeriod).Result()
 	if err != nil {
-		logger.Sugar.Debugf("Redis monotonic: NOT SET %s: %s: %v", path, value, err)
+		log.Debugf("Redis monotonic: NOT SET %s: %s: %v", path, value, err)
 		return false, err
 	}
 
-	logger.Sugar.Debugf("Redis monotonic: SET %s: %s", path, value)
+	log.Debugf("Redis monotonic: SET %s: %s", path, value)
 	return result, nil
 }
 
 func (c *Monotonic) incrNEx(ctx context.Context, tenantIDOrWallet string, n int64) (int64, error) {
+	log := c.Log().FromContext(ctx)
+	defer log.Close()
+
 	key := c.countKey(tenantIDOrWallet)
 	path := c.countPath(tenantIDOrWallet)
 
@@ -283,7 +304,7 @@ func (c *Monotonic) incrNEx(ctx context.Context, tenantIDOrWallet string, n int6
 	if err.Error() != incrNExNotFound {
 		// actual error rather than the 'not-found' signal
 		err = fmt.Errorf("redis monotonic: INCRNEX failed %s: %w", path, err)
-		logger.Sugar.Debugf("%v", err)
+		log.Debugf("%v", err)
 
 		return 0, err
 	}
@@ -292,10 +313,10 @@ func (c *Monotonic) incrNEx(ctx context.Context, tenantIDOrWallet string, n int6
 	spanRefresh, ctx := otrace.StartSpanFromContext(ctx, "redis.counter.setOperation.INCRNEX(script) count refresh")
 	defer spanRefresh.Finish()
 	// This means the count did not exist or expired, trigger a refresh
-	logger.Sugar.Debugf("Redis monotonic: expired or not initialised - refreshing %s: %v", tenantIDOrWallet, err)
+	log.Debugf("Redis monotonic: expired or not initialised - refreshing %s: %v", tenantIDOrWallet, err)
 	count, err = c.refresh(ctx, tenantIDOrWallet)
 	if err != nil {
-		logger.Sugar.Debugf("Redis monotonic: refresh %s: %v", path, err)
+		log.Debugf("Redis monotonic: refresh %s: %v", path, err)
 		return 0, err
 	}
 
@@ -316,13 +337,13 @@ func (c *Monotonic) incrNEx(ctx context.Context, tenantIDOrWallet string, n int6
 	ok, err := c.setNX(ctx, tenantIDOrWallet, count)
 	if err != nil {
 		// This is a straight up error, the caller sees this as a failed attempt to aquire the count current value
-		logger.Sugar.Debugf("Redis monotonic: refresh setNX (ignoring error) %s: %v", path, err)
+		log.Debugf("Redis monotonic: refresh setNX (ignoring error) %s: %v", path, err)
 		return 0, err
 	}
 	if ok {
 		// We are the only client to set the value, it is the correct current
 		// value to return to the caller. And we successfully added the 'n'
-		logger.Sugar.Debugf("Redis monotonic: refresh setNX ok *(re)initialised* %s: count=%d, added=%d, was=%d", path, count, n, count-n)
+		log.Debugf("Redis monotonic: refresh setNX ok *(re)initialised* %s: count=%d, added=%d, was=%d", path, count, n, count-n)
 		return count, nil
 	}
 
@@ -337,9 +358,9 @@ func (c *Monotonic) incrNEx(ctx context.Context, tenantIDOrWallet string, n int6
 	defer span.Finish()
 	count, err = c.incrNExRunner.Run(ctx, c.client, []string{key}, n).Int64()
 	if err == nil {
-		logger.Sugar.Debugf("Redis monotonic: refresh refresh loser ok %s: count=%d, added=%d, was=%d", path, count, n, count-n)
+		log.Debugf("Redis monotonic: refresh refresh loser ok %s: count=%d, added=%d, was=%d", path, count, n, count-n)
 		return count, nil
 	}
-	logger.Sugar.Debugf("Redis monotonic: refresh refresh loser error %s: %v", path, err)
+	log.Debugf("Redis monotonic: refresh refresh loser error %s: %v", path, err)
 	return 0, err
 }

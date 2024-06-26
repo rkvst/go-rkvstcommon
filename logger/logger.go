@@ -16,7 +16,6 @@ import (
 )
 
 var (
-	Plain      *zap.Logger
 	Sugar      *WrappedLogger
 	undoLogger func()
 	Recorded   *observer.ObservedLogs
@@ -69,11 +68,23 @@ func (l *WrappedLogger) DebugR(msg string, args ...any) {
 	l.WithOptions(zap.AddCallerSkip(1)).Debugw(msg, keyVals...)
 }
 
+func (l *WrappedLogger) Check(lvl string) bool {
+	switch lvl {
+	case InfoLevel:
+		ce := l.Desugar().Check(zap.InfoLevel, "")
+		return ce != nil
+	case DebugLevel:
+		fallthrough
+	default:
+		ce := l.Desugar().Check(zap.DebugLevel, "")
+		return ce != nil
+	}
+}
+
 // OnExit should be deferred immediately after calling the
 // New() method.
 func OnExit() {
 	_ = Sugar.Sync()
-	_ = Plain.Sync()
 	undoLogger()
 	Recorded = nil
 }
@@ -124,6 +135,7 @@ func New(level string, opts ...any) {
 	}
 
 	var err error
+	var plain *zap.Logger
 	// Use opinionated presets for now.
 	switch level {
 	case "DEBUG":
@@ -137,13 +149,13 @@ func New(level string, opts ...any) {
 				MessageKey: "message",
 			}
 		}
-		Plain, err = cfg.Build(zopts...)
+		plain, err = cfg.Build(zopts...)
 		if err != nil {
 			log.Panicf("cannot initialise zap logger: %v", err)
 		}
 
 	case "NOOP":
-		Plain = zap.NewNop()
+		plain = zap.NewNop()
 
 	case "TEST":
 		core, recorded := observer.New(zapcore.DebugLevel)
@@ -164,12 +176,11 @@ func New(level string, opts ...any) {
 				MessageKey: "message",
 			}
 		}
-		var plain *zap.Logger
 		plain, err = cfg.Build(zopts...)
 		if err != nil {
 			log.Panicf("cannot initialise zap logger: %v", err)
 		}
-		Plain = plain.WithOptions(ram)
+		plain = plain.WithOptions(ram)
 		Recorded = recorded
 
 	default:
@@ -183,14 +194,14 @@ func New(level string, opts ...any) {
 				MessageKey: "message",
 			}
 		}
-		Plain, err = cfg.Build(zopts...)
+		plain, err = cfg.Build(zopts...)
 		if err != nil {
 			log.Panicf("cannot initialise zap logger: %v", err)
 		}
 	}
-	undoLogger = zap.RedirectStdLog(Plain)
+	undoLogger = zap.RedirectStdLog(plain)
 	Sugar = &WrappedLogger{
-		Plain.Sugar(),
+		plain.Sugar(),
 	}
 }
 

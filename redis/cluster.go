@@ -7,7 +7,6 @@ import (
 	"time"
 
 	env "github.com/datatrails/go-datatrails-common/environment"
-	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/go-redis/redis/v8"
 )
 
@@ -32,6 +31,7 @@ type RedisConfig interface {
 	Namespace() string
 	IsCluster() bool
 	URL() string
+	Log() Logger
 }
 
 type Scripter interface {
@@ -53,6 +53,7 @@ type RedisClient interface {
 }
 
 type clusterConfig struct {
+	log            Logger
 	Size           int
 	namespace      string
 	clusterOptions redis.ClusterOptions
@@ -61,8 +62,8 @@ type clusterConfig struct {
 
 // ReadClusterConfigOrFatal assumes conventional service env vars and
 // populates a ClusterConfig or Fatals out
-func FromEnvOrFatal() RedisConfig {
-	cfg := clusterConfig{}
+func FromEnvOrFatal(log Logger) RedisConfig {
+	cfg := clusterConfig{log: log}
 
 	cfg.Size = env.GetIntOrFatal(RedisClusterSizeEnvSuffix)
 	cfg.namespace = env.GetOrFatal(RedisNamespaceEnvSuffix)
@@ -84,12 +85,15 @@ func FromEnvOrFatal() RedisConfig {
 			cfg.clusterOptions.Addrs,
 			env.GetOrFatal(suffix),
 		)
-		logger.Sugar.InfoR("Addrs", cfg.clusterOptions.Addrs)
+		log.InfoR("Addrs", cfg.clusterOptions.Addrs)
 	}
 
 	return &cfg
 }
 
+func (cfg *clusterConfig) Log() Logger {
+	return cfg.log
+}
 func (cfg *clusterConfig) IsCluster() bool {
 	return cfg.Size > -1
 }
@@ -128,6 +132,8 @@ func (cfg *clusterConfig) URL() string {
 }
 
 func NewRedisClient(cfg RedisConfig) (RedisClient, error) {
+	log := cfg.Log()
+
 	var err error
 	if cfg.IsCluster() {
 		var copts *redis.ClusterOptions
@@ -142,17 +148,13 @@ func NewRedisClient(cfg RedisConfig) (RedisClient, error) {
 		return nil, err
 	}
 	opts.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
-	logger.Sugar.Infof("connecting to redis: %v", opts)
+	log.Infof("connecting to redis: %v", opts)
 	c := redis.NewClient(opts)
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	status := c.Ping(ctx)
 	if status.Err() != nil {
-		logger.Sugar.Infof("failed ping: %v (%v, %v)", status.Err(), status.FullName(), status.Args())
+		log.Infof("failed ping: %v (%v, %v)", status.Err(), status.FullName(), status.Args())
 	}
 	return c, status.Err()
 }
-
-// func NewClusterClient(cfg ClusterConfig) *redis.ClusterClient {
-// 	return redis.NewClusterClient(&cfg.clusterOptions)
-// }

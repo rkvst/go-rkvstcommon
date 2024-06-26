@@ -7,8 +7,6 @@ import (
 	"encoding/json"
 	"os"
 
-	"go.uber.org/zap"
-
 	"github.com/datatrails/go-datatrails-common/logger"
 )
 
@@ -20,16 +18,13 @@ type Secrets struct {
 
 // New parses secrets file.
 func readFile(secretsFile string) ([]byte, error) {
-	logger.Plain.Info(
-		"Get secrets",
-		zap.String("secretsFile", secretsFile),
-	)
+	logger.Sugar.Infof("Get secrets %s", secretsFile)
 	data, err := os.ReadFile(secretsFile)
 	if err != nil {
-		logger.Plain.Info(
-			"unable to read secrets file",
-			zap.String("secretsFile", secretsFile),
-			zap.Error(err),
+		logger.Sugar.Infof(
+			"unable to read secrets file %s: %v",
+			secretsFile,
+			err,
 		)
 		return nil, err
 	}
@@ -45,17 +40,17 @@ func New(secretsFile string) (*Secrets, error) {
 	secrets := &Secrets{}
 	err = json.Unmarshal(data, &secrets)
 	if err != nil {
-		logger.Plain.Info(
-			"unable to marshal json in secrets file",
-			zap.String("secretsFile", secretsFile),
-			zap.Error(err),
+		logger.Sugar.Infof(
+			"unable to marshal json in secrets file %s: %v",
+			secretsFile,
+			err,
 		)
 		return nil, err
 	}
-	logger.Plain.Debug(
-		"JSON secrets",
-		zap.String("account", secrets.Account),
-		zap.String("url", secrets.URL),
+	logger.Sugar.Debugf(
+		"JSON secrets account %s url %s",
+		secrets.Account,
+		secrets.URL,
 	)
 
 	return secrets, nil

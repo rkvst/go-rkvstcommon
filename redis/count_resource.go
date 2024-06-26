@@ -3,8 +3,6 @@ package redis
 import (
 	"context"
 	"time"
-
-	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 // ResourceCounter is a function which accepts a context and counts the number of
@@ -44,11 +42,12 @@ func NewResource(
 	opts ...ResourceOption,
 ) *CountResource {
 
-	logger.Sugar.Debugf("'%s' Resource: '%s'", name, cfg.URL()) // assume at least one addr
+	log := cfg.Log()
+	log.Debugf("'%s' Resource: '%s'", name, cfg.URL()) // assume at least one addr
 
 	client, err := NewRedisClient(cfg)
 	if err != nil {
-		logger.Sugar.Panicf("bad redis config provided %v", err)
+		log.Panicf("bad redis config provided %v", err)
 	}
 
 	r := &CountResource{
@@ -76,6 +75,9 @@ func NewResource(
 	return r
 }
 
+func (cr *CountResource) Log() Logger {
+	return cr.Resource.Log()
+}
 func (cr *CountResource) Name() string {
 	return cr.Resource.name
 }
@@ -83,7 +85,10 @@ func (cr *CountResource) Name() string {
 // Return adds 1 to counter
 func (cr *CountResource) Return(ctx context.Context, tenantID string) error {
 
-	logger.Sugar.Debugf("Return: '%s'", cr.countPath(tenantID))
+	log := cr.Log().FromContext(ctx)
+	defer log.Close()
+
+	log.Debugf("Return: '%s'", cr.countPath(tenantID))
 	limit, err := cr.getLimit(ctx, tenantID)
 	if err != nil {
 		return err
@@ -109,7 +114,10 @@ func (cr *CountResource) Return(ctx context.Context, tenantID string) error {
 // Consume subtracts 1 from counter
 func (cr *CountResource) Consume(ctx context.Context, tenantID string) error {
 
-	logger.Sugar.Debugf("Consume: '%s'", cr.countPath(tenantID))
+	log := cr.Log().FromContext(ctx)
+	defer log.Close()
+
+	log.Debugf("Consume: '%s'", cr.countPath(tenantID))
 	limit, err := cr.getLimit(ctx, tenantID)
 	if err != nil {
 		return err
@@ -140,14 +148,16 @@ func (cr *CountResource) GetLimit() int64 {
 // is retrieved from upstream if necessary using the Limiter method. This happens
 // when the current TTL parameters are exceeded.
 func (cr *CountResource) Limited(ctx context.Context, tenantID string) bool {
+	log := cr.Log().FromContext(ctx)
+	defer log.Close()
 
-	logger.Sugar.Debugf("Limited: '%s'", cr.countPath(tenantID))
+	log.Debugf("Limited: '%s'", cr.countPath(tenantID))
 	limited := true
 
 	var limits *tenantLimit
 	limits, ok := cr.tenantLimits[tenantID]
 	if !ok {
-		logger.Sugar.Debugf("Create tenantLimits %s", tenantID)
+		log.Debugf("Create tenantLimits %s", tenantID)
 		cr.tenantLimits[tenantID] = &tenantLimit{
 			lastRefreshTime: time.Now(),
 		}
@@ -167,36 +177,36 @@ func (cr *CountResource) Limited(ctx context.Context, tenantID string) bool {
 	cr.limit = limit
 
 	// we do not need to pull from upstream the local limit will do
-	logger.Sugar.Debugf("elapsed %v refreshTTL %v lastRefreshCount %d refreshCount %d",
+	log.Debugf("elapsed %v refreshTTL %v lastRefreshCount %d refreshCount %d",
 		elapsed, cr.refreshTTL, limits.lastRefreshCount, cr.refreshCount,
 	)
 	if elapsed < cr.refreshTTL && limits.lastRefreshCount < cr.refreshCount {
-		logger.Sugar.Debugf("TTL is still ok %s %d", tenantID, limit)
+		log.Debugf("TTL is still ok %s %d", tenantID, limit)
 		return limit >= 0
 	}
 
 	// pull from upstream
-	logger.Sugar.Infof("Get limit from tenancies service %s %s", cr.name, tenantID)
+	log.Infof("Get limit from tenancies service %s %s", cr.name, tenantID)
 	newLimit, err := cr.resourceLimiter(ctx, cr.Resource, tenantID)
 	if err != nil {
-		logger.Sugar.Infof("Unable to get upstream limit %s: %v", cr.name, err)
+		log.Infof("Unable to get upstream limit %s: %v", cr.name, err)
 		// return whatever the old limit was, as we can't get hold of the new limit
 		return limit >= 0
 	}
 
 	// reset the refresh triggers
-	logger.Sugar.Debugf("Reset the TTL triggers")
+	log.Debugf("Reset the TTL triggers")
 	limits.lastRefreshCount = 0
 	limits.lastRefreshTime = time.Now()
 	cr.limit = newLimit
 
 	// check if the new limit is the same as the old limit
 	if newLimit == limit {
-		logger.Sugar.Infof("Limit has not changed %s %s", cr.name, tenantID)
+		log.Infof("Limit has not changed %s %s", cr.name, tenantID)
 		return limit >= 0
 	}
 
-	logger.Sugar.Infof("new limit now %d (from %d)", newLimit, limit)
+	log.Infof("new limit now %d (from %d)", newLimit, limit)
 
 	// check if the new limit is unlimited
 	if newLimit == -1 {
@@ -206,18 +216,18 @@ func (cr *CountResource) Limited(ctx context.Context, tenantID string) bool {
 	// if we go from unlimited to limited we need to populate the counter
 	// if we decrease the caps limit we need to re-populate the counter
 	if (limit == -1 && newLimit >= 0) || (newLimit < limit && newLimit != -1) {
-		logger.Sugar.Infof("Populate counter %d (from %d)", newLimit, limit)
+		log.Infof("Populate counter %d (from %d)", newLimit, limit)
 		_, err = cr.initialise(ctx, tenantID, newLimit)
 		if err != nil {
-			logger.Sugar.Infof("reset count failure: %v", err)
+			log.Infof("reset count failure: %v", err)
 		}
 	}
 
 	// set the new limit
-	logger.Sugar.Debugf("Set Redis %s %d", tenantID, limit)
+	log.Debugf("Set Redis %s %d", tenantID, limit)
 	err = cr.setOperation(ctx, opSetLimit, tenantID, newLimit)
 	if err != nil {
-		logger.Sugar.Infof("failed to set new limit: %v", err)
+		log.Infof("failed to set new limit: %v", err)
 		// return whatever the old limit was, as we can't set the new limit
 		return limit >= 0
 	}
@@ -230,15 +240,18 @@ func (cr *CountResource) Limited(ctx context.Context, tenantID string) bool {
 // (temporarily inaccessible).
 // Subtracts current number of resources determined by executing the Counter Method.
 func (cr *CountResource) initialise(ctx context.Context, tenantID string, limit int64) (int64, error) {
+	log := cr.Log().FromContext(ctx)
+	defer log.Close()
+
 	var err error
 
-	logger.Sugar.Debugf("Initialise: '%s'", cr.countPath(tenantID))
+	log.Debugf("Initialise: '%s'", cr.countPath(tenantID))
 	currentCount, err := cr.resourceCounter(ctx)
 	if err != nil {
-		logger.Sugar.Infof("currentCount failure: %v", err)
+		log.Infof("currentCount failure: %v", err)
 		return int64(0), err
 	}
-	logger.Sugar.Debugf("Redis Resource Current Count: '%s' %d", cr.countPath(tenantID), currentCount)
+	log.Debugf("Redis Resource Current Count: '%s' %d", cr.countPath(tenantID), currentCount)
 	var count int64
 	if currentCount >= limit {
 		count = 0
@@ -250,9 +263,9 @@ func (cr *CountResource) initialise(ctx context.Context, tenantID string, limit 
 	// Log but ignore SET failure as we have enough info to enforce the limit without
 	// REDIS.
 	if err != nil {
-		logger.Sugar.Infof("Redis Resource SET failure: %v", err)
+		log.Infof("Redis Resource SET failure: %v", err)
 	}
-	logger.Sugar.Debugf("Resource Initialised: '%s' %d", cr.countPath(tenantID), count)
+	log.Debugf("Resource Initialised: '%s' %d", cr.countPath(tenantID), count)
 
 	return count, nil
 }
@@ -261,9 +274,12 @@ func (cr *CountResource) initialise(ctx context.Context, tenantID string, limit 
 // An error is returned when either the redis counter cannot be read or this
 // counter is disabled.
 func (cr *CountResource) Available(ctx context.Context, tenantID string) (int64, error) {
+	log := cr.Log().FromContext(ctx)
+	defer log.Close()
+
 	var err error
 
-	logger.Sugar.Debugf("Available: '%s'", cr.countPath(tenantID))
+	log.Debugf("Available: '%s'", cr.countPath(tenantID))
 	limit, err := cr.getLimit(ctx, tenantID)
 	if err != nil {
 		return 0, err
@@ -278,7 +294,7 @@ func (cr *CountResource) Available(ctx context.Context, tenantID string) (int64,
 			return int64(0), err
 		}
 	}
-	logger.Sugar.Infof("Counter: %d", count)
+	log.Infof("Counter: %d", count)
 
 	if count > 0 {
 		return count, nil
@@ -287,12 +303,12 @@ func (cr *CountResource) Available(ctx context.Context, tenantID string) (int64,
 	// count is now zero so check the actual number of resources and adjust if necessary.
 	newLimit, err := cr.refreshLimit(ctx, tenantID)
 	if err != nil {
-		logger.Sugar.Infof("reset count failure: %v", err)
+		log.Infof("reset count failure: %v", err)
 		newLimit = limit
 	}
 	count, err = cr.initialise(ctx, tenantID, newLimit)
 	if err != nil {
-		logger.Sugar.Infof("reset count failure: %v", err)
+		log.Infof("reset count failure: %v", err)
 	}
 	return count, nil
 }
@@ -302,24 +318,27 @@ func (cr *CountResource) Available(ctx context.Context, tenantID string) (int64,
 // Returns the number of available units of this resource. Attempts the fast path first, of getting
 // from the cache directly. Will attempt to re-initialise the count if its inaccessible or 0.
 func (cr *CountResource) ReadOnlyAvailable(ctx context.Context, tenantID string) (int64, error) {
+	log := cr.Log().FromContext(ctx)
+	defer log.Close()
+
 	var err error
 
-	logger.Sugar.Debugf("ReadOnlyAvailable: '%s'", cr.countPath(tenantID))
+	log.Debugf("ReadOnlyAvailable: '%s'", cr.countPath(tenantID))
 	// Pure read operation from the cache - will usually succeed and return a non-zero value.
 	count, err := cr.getOperation(ctx, opGetCount, tenantID)
 	if err != nil || count == 0 {
 		if err != nil {
-			logger.Sugar.Infof("error getting count from Redis: %v", err)
+			log.Infof("error getting count from Redis: %v", err)
 		}
 
 		// An error might indicate that the key wasn't available in the cache, so we use the
 		// full-fat method to initialise it. We also want to do this if the count has hit 0, since
 		// the user may have paid to increase their cap for this resource.
 
-		logger.Sugar.Infof("ReadOnlyAvailable: Insufficient resource: Delegating to Available")
+		log.Infof("ReadOnlyAvailable: Insufficient resource: Delegating to Available")
 		return cr.Available(ctx, tenantID)
 	}
 
-	logger.Sugar.Debugf("ReadOnlyAvailable: Counter: %d", count)
+	log.Debugf("ReadOnlyAvailable: Counter: %d", count)
 	return count, nil
 }

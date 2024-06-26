@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/go-redis/redis/v8"
 	otrace "github.com/opentracing/opentracing-go"
 )
@@ -25,7 +24,9 @@ type HashCache struct {
 }
 
 func NewHashCache(cfg RedisConfig, expiryTimeoutSeconds int64) (*HashCache, error) {
-	logger.Sugar.Debugf("Redis NewHashStore")
+	log := cfg.Log()
+
+	log.Debugf("Redis NewHashStore")
 
 	client, err := NewRedisClient(cfg)
 	if err != nil {
@@ -40,8 +41,12 @@ func NewHashCache(cfg RedisConfig, expiryTimeoutSeconds int64) (*HashCache, erro
 	return c, nil
 }
 
+func (c *HashCache) Log() Logger {
+	return c.Cfg.Log()
+}
+
 func (c *HashCache) Close() error {
-	logger.Sugar.Debugf("HashCache Close")
+	c.Log().Debugf("HashCache Close")
 	if c.client == nil {
 		return nil
 	}
@@ -51,8 +56,11 @@ func (c *HashCache) Close() error {
 }
 
 func (c *HashCache) Delete(ctx context.Context, name string) error {
+	log := c.Log().FromContext(ctx)
+	defer log.Close()
+
 	key := fmt.Sprintf("%s:%s", c.Cfg.Namespace(), name)
-	logger.Sugar.Debugf("Delete: %s", key)
+	log.Debugf("Delete: %s", key)
 	span, ctx := otrace.StartSpanFromContext(ctx, "redis.hashcache.Del")
 	defer span.Finish()
 
@@ -84,6 +92,8 @@ type CachedReader func(results any) error
 //   - errors marshalling or unmarshaling values for the cache are returned to the
 //     caller provided a reader error has not occurred.
 func (c *HashCache) CachedRead(ctx context.Context, results any, name, field string, reader CachedReader) error {
+	log := c.Log().FromContext(ctx)
+	defer log.Close()
 
 	key := fmt.Sprintf("%s:%s", c.Cfg.Namespace(), name)
 
@@ -94,7 +104,7 @@ func (c *HashCache) CachedRead(ctx context.Context, results any, name, field str
 		// transactionaly update the cache
 		b, err := json.Marshal(update)
 		if err != nil {
-			logger.Sugar.Infof("Unable to marshal cache update: %v", err)
+			log.Infof("Unable to marshal cache update: %v", err)
 			return err
 		}
 
@@ -107,9 +117,9 @@ func (c *HashCache) CachedRead(ctx context.Context, results any, name, field str
 			return nil
 		})
 		if err != nil {
-			logger.Sugar.Infof("Unable to set result to cache: %v", err)
+			log.Infof("Unable to set result to cache: %v", err)
 		}
-		logger.Sugar.Debugf("update cache. key: %s, field: %s, value: %v", key, field, hex.EncodeToString(b))
+		log.Debugf("update cache. key: %s, field: %s, value: %v", key, field, hex.EncodeToString(b))
 		return nil
 	}
 
@@ -128,12 +138,12 @@ func (c *HashCache) CachedRead(ctx context.Context, results any, name, field str
 		span.Finish()
 		if err != nil {
 			c.cacheMisses++
-			logger.Sugar.Debugf("unable to read from cache. key: %s, field: %s, expiry: %v, err: %v", key, field, c.expiryTimeoutSeconds, err)
+			log.Debugf("unable to read from cache. key: %s, field: %s, expiry: %v, err: %v", key, field, c.expiryTimeoutSeconds, err)
 
 			readerErr = reader(results)
 			readerCalledOnce = true // regardless of err, we have called it exactly once
 			if readerErr != nil {
-				logger.Sugar.Infof("reader failed getting results (for miss): %v", err)
+				log.Infof("reader failed getting results (for miss): %v", err)
 				return readerErr
 			}
 			return cacheUpdate(tx, results)
@@ -142,11 +152,11 @@ func (c *HashCache) CachedRead(ctx context.Context, results any, name, field str
 		fbytes := []byte(cachedResults)
 		if err = json.Unmarshal(fbytes, &results); err != nil {
 			c.cacheMisses++
-			logger.Sugar.Errorf("unable to unmarshall cached result, err: %v", err)
+			log.Infof("unable to unmarshall cached result, err: %v", err)
 			readerErr = reader(results)
 			readerCalledOnce = true // regardless of err, we have called it exactly once
 			if readerErr != nil {
-				logger.Sugar.Infof("reader failed getting results (for corrupt entry): %v", err)
+				log.Infof("reader failed getting results (for corrupt entry): %v", err)
 				return readerErr
 			}
 
@@ -158,7 +168,7 @@ func (c *HashCache) CachedRead(ctx context.Context, results any, name, field str
 		}
 		c.cacheHits++
 		cacheHit = true
-		logger.Sugar.Debugf("returning results from cache, hit rate %.2f%% (hits %d misses %d)",
+		log.Debugf("returning results from cache, hit rate %.2f%% (hits %d misses %d)",
 			(100.0*float64(c.cacheHits))/float64(c.cacheHits+c.cacheMisses), c.cacheHits, c.cacheMisses)
 		return nil
 	}
@@ -174,10 +184,10 @@ func (c *HashCache) CachedRead(ctx context.Context, results any, name, field str
 		// invoking transact at all, so we need to check explicitly for cachHit
 		// in the non err case.
 		if err != nil {
-			logger.Sugar.Infof("watched transaction failed: %v", err)
+			log.Infof("watched transaction failed: %v", err)
 		}
 		if err == nil {
-			logger.Sugar.Infof("go-redis watch returned nil error without a successful cache hit")
+			log.Infof("go-redis watch returned nil error without a successful cache hit")
 		}
 		if readerCalledOnce {
 			if readerErr != nil {
@@ -189,7 +199,7 @@ func (c *HashCache) CachedRead(ctx context.Context, results any, name, field str
 	}
 
 	if readerErr != nil {
-		logger.Sugar.Infof("reader failed getting results (for failed watch): %v", readerErr)
+		log.Infof("reader failed getting results (for failed watch): %v", readerErr)
 	}
 
 	return readerErr

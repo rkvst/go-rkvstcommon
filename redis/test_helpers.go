@@ -4,6 +4,7 @@ import "github.com/go-redis/redis/v8"
 
 func NewResourceWithMockedRedis(
 	name string,
+	log Logger,
 	opt CountResourceOption,
 	opts ...ResourceOption,
 ) (*CountResource, *mockClient) {
@@ -16,6 +17,7 @@ func NewResourceWithMockedRedis(
 					namespace:      "something",
 					clusterOptions: redis.ClusterOptions{},
 					options:        redis.Options{},
+					log:            log,
 				},
 				name: name,
 			},

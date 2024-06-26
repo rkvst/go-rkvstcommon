@@ -290,6 +290,7 @@ func TestLimited(t *testing.T) {
 				ClientContext: ClientContext{
 					cfg: &clusterConfig{
 						namespace: "xxxx",
+						log:       logger.Sugar,
 					},
 				},
 				resourceLimiter: mResourceLimit.mockResourceLimiter,
@@ -423,6 +424,7 @@ func TestLimitedMultipleCalls(t *testing.T) {
 				ClientContext: ClientContext{
 					cfg: &clusterConfig{
 						namespace: "xxxx",
+						log:       logger.Sugar,
 					},
 				},
 				resourceLimiter: mResourceLimit.mockResourceLimiter,

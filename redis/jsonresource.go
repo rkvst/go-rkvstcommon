@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/datatrails/go-datatrails-common/logger"
 	otrace "github.com/opentracing/opentracing-go"
 )
 
@@ -40,6 +39,9 @@ type JsonResource struct {
 func (r *JsonResource) URL() string {
 	return r.cfg.URL()
 }
+func (r *JsonResource) Log() Logger {
+	return r.cfg.Log()
+}
 
 // Name gets the name of the resource
 func (r *JsonResource) Name() string {
@@ -53,6 +55,9 @@ func (r *JsonResource) Key(tenantID string) string {
 
 // Set takes a JSON-serializable value, marshals it, and stores it for the given tenantID
 func (r *JsonResource) Set(ctx context.Context, tenantID string, value any) error {
+	log := r.Log().FromContext(ctx)
+	defer log.Close()
+
 	span, ctx := otrace.StartSpanFromContext(ctx, "redis.resource.setOperation.Set")
 	defer span.Finish()
 
@@ -66,19 +71,22 @@ func (r *JsonResource) Set(ctx context.Context, tenantID string, value any) erro
 		return err
 	}
 
-	logger.Sugar.Debugf("Set: set resource '%s' to '%s'", r.Key(tenantID), value)
+	log.Debugf("Set: set resource '%s' to '%s'", r.Key(tenantID), value)
 	return nil
 }
 
 // Get reads the resource for the given tenantID, and unmarshals it into target (which must be a
 // pointer to a suitable empty struct.)
 func (r *JsonResource) Get(ctx context.Context, tenantID string, target any) error {
+	log := r.Log().FromContext(ctx)
+	defer log.Close()
+
 	span, ctx := otrace.StartSpanFromContext(ctx, "redis.resource.getOperation.Do")
 	defer span.Finish()
 
 	result, err := r.client.Do(ctx, "GET", r.Key(tenantID)).Result()
 	if err != nil {
-		logger.Sugar.Infof("Get: error getting result for %s: %v", r.Key(tenantID), err)
+		log.Infof("Get: error getting result for %s: %v", r.Key(tenantID), err)
 		return err
 	}
 

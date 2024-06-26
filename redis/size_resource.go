@@ -8,8 +8,6 @@ package redis
 import (
 	"context"
 	"fmt"
-
-	"github.com/datatrails/go-datatrails-common/logger"
 )
 
 type SizeResource struct {
@@ -28,7 +26,9 @@ func NewSizeResource(
 	opts ...ResourceOption,
 ) (*SizeResource, error) {
 
-	logger.Sugar.Debugf("%s SizeResource", name)
+	log := cfg.Log()
+
+	log.Debugf("%s SizeResource", name)
 
 	client, err := NewRedisClient(cfg)
 	if err != nil {

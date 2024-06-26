@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/datatrails/go-datatrails-common/logger"
 	"github.com/go-redis/redis/v8"
 	otrace "github.com/opentracing/opentracing-go"
 )
@@ -74,6 +73,9 @@ type Resource struct {
 	refreshCount    int64
 }
 
+func (r *Resource) Log() Logger {
+	return r.cfg.Log()
+}
 func (r *Resource) URL() string {
 	return r.cfg.URL()
 }
@@ -117,7 +119,7 @@ func (r *Resource) limitKey(tenantID string) string {
 
 // setOperation runs a specific `SET` operation for redis.
 func (r *Resource) setOperation(ctx context.Context, operation string, tenantID string, arg int64) error {
-	log := logger.Sugar.FromContext(ctx)
+	log := r.Log().FromContext(ctx)
 	defer log.Close()
 
 	log.Debugf("resource operation %s", operation)
@@ -155,7 +157,7 @@ func (r *Resource) setOperation(ctx context.Context, operation string, tenantID 
 //
 //	`INCR`, `DECR` and `GET`.
 func (r *Resource) getOperation(ctx context.Context, operation string, tenantID string) (int64, error) {
-	log := logger.Sugar.FromContext(ctx)
+	log := r.Log().FromContext(ctx)
 	defer log.Close()
 
 	// process the operation, expect format to be 'OP_ID' eg. 'GET_limit'
@@ -197,7 +199,7 @@ func parseArg(arg int64) string {
 // Limited returns true if the limit is enabled. The current limit
 // is retrieved from upstream if necessary using the Limiter method.
 func (r *Resource) Limited(ctx context.Context, tenantID string) bool {
-	log := logger.Sugar.FromContext(ctx)
+	log := r.Log().FromContext(ctx)
 	defer log.Close()
 
 	log.Debugf("Resource Limited %s", tenantID)
@@ -247,7 +249,7 @@ func (r *Resource) Limited(ctx context.Context, tenantID string) bool {
 
 	// check if the new limit is the same as the old limit
 	if newLimit == limit {
-		logger.Sugar.Infof("Limit has not changed %s %s", r.name, tenantID)
+		log.Infof("Limit has not changed %s %s", r.name, tenantID)
 		return limit >= 0
 	}
 
@@ -272,7 +274,7 @@ func (r *Resource) Limited(ctx context.Context, tenantID string) bool {
 
 // getLimit gets the limit for a given tenant, attempt first from redis, then upstream.
 func (r *Resource) getLimit(ctx context.Context, tenantID string) (int64, error) {
-	log := logger.Sugar.FromContext(ctx)
+	log := r.Log().FromContext(ctx)
 	defer log.Close()
 
 	// if we have found the limit via redis, then return
@@ -288,7 +290,7 @@ func (r *Resource) getLimit(ctx context.Context, tenantID string) (int64, error)
 
 // refreshLimit gets the limit for a given tenant from upstream.
 func (r *Resource) refreshLimit(ctx context.Context, tenantID string) (int64, error) {
-	log := logger.Sugar.FromContext(ctx)
+	log := r.Log().FromContext(ctx)
 	defer log.Close()
 
 	log.Debugf("RefreshLimit From Tenancies %s", tenantID)
