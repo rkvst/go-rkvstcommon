@@ -11,31 +11,35 @@ import (
 	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
-type Runner func(string, logger.Logger) error
+type Runner func(logger.Logger) error
 
 // defers do not work in main() because of the os.Exit(
-func Run(serviceName string, run Runner) {
+func Run(serviceName string, portName string, run Runner) {
 	logger.New(environment.GetLogLevel())
 	log := logger.Sugar.WithServiceName(serviceName)
 
-	// ensure we configure go max procs and memlimit
-	//  for kubernetes.
-	k8Config, err := k8sworker.NewK8Config(k8sworker.WithLogger(log.Infof))
-	if err != nil {
-		log.Infof("Error configuring go for kubernetes: %v", err)
-		os.Exit(1)
-	}
-
-	// log the useful kubernetes go configuration
-	log.Infof("Go Configuration: %+v", k8Config)
-
 	exitCode := func() int {
 		var exitCode int
-		closer := tracing.NewTracer()
-		if closer != nil {
-			defer closer.Close()
+		var err error
+		// ensure we configure go max procs and memlimit
+		//  for kubernetes.
+		k8Config, err := k8sworker.NewK8Config(k8sworker.WithLogger(log.Infof))
+		if err != nil {
+			log.Infof("Error configuring go for kubernetes: %v", err)
+			return 1
 		}
-		err := run(serviceName, log)
+		defer k8sworker.Close()
+
+		// log the useful kubernetes go configuration
+		log.Infof("Go Configuration: %+v", k8Config)
+
+		if portName != "" {
+			closer := tracing.NewTracer(log, portName)
+			if closer != nil {
+				defer closer.Close()
+			}
+		}
+		err = run(log)
 		if err != nil {
 			log.Infof("Error at startup: %v", err)
 			exitCode = 1
@@ -43,11 +47,8 @@ func Run(serviceName string, run Runner) {
 		return exitCode
 	}()
 
-	log.Infof("Shutting down gracefully")
+	log.Infof("Shutting down")
 	logger.OnExit()
-
-	// ensure we reset go configuration back to normal
-	k8sworker.Close()
 
 	os.Exit(exitCode)
 

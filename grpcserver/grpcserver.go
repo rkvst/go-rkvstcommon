@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	env "github.com/datatrails/go-datatrails-common/environment"
 	"github.com/datatrails/go-datatrails-common/grpchealth"
 	grpcHealth "google.golang.org/grpc/health/grpc_health_v1"
 )
@@ -79,12 +78,11 @@ func tracingFilter(ctx context.Context, fullMethodName string) bool {
 
 // New creates a new GRPCServer that is bound to a specific GRPC API. This object complies with
 // the standard Listener service and can be managed by the startup.Listeners object.
-func New(log Logger, name string, opts ...GRPCServerOption) GRPCServer {
-	listenStr := fmt.Sprintf(":%s", env.GetOrFatal("PORT"))
+func New(log Logger, name string, port string, opts ...GRPCServerOption) GRPCServer {
 
 	g := GRPCServer{
 		name:      strings.ToLower(name),
-		listenStr: listenStr,
+		listenStr: fmt.Sprintf(":%s", port),
 		register:  defaultRegisterServer,
 		interceptors: []grpc.UnaryServerInterceptor{
 			grpc_otrace.UnaryServerInterceptor(grpc_otrace.WithFilterFunc(tracingFilter)),
