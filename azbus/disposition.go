@@ -51,8 +51,6 @@ func (r *Receiver) dispose(ctx context.Context, d Disposition, err error, msg *R
 	}
 }
 
-// NB: ALL disposition methods return nil so they can be used in return statements
-
 // Abandon abandons message. This function is not used but is present for consistency.
 func (r *Receiver) abandon(ctx context.Context, err error, msg *ReceivedMessage) {
 	ctx = context.WithoutCancel(ctx)
