@@ -13,15 +13,28 @@ import (
 
 // Count counts the number of blobs filtered by the given tags filter
 func (azp *Storer) Count(ctx context.Context, tagsFilter string, opts ...Option) (int64, error) {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.close()
 
-	logger.Sugar.Debugf("Count")
+	log.Debugf("Count")
 
-	r, err := azp.FilteredList(ctx, tagsFilter, opts...)
-	if err != nil {
-		return 0, err
+	var count int64
+	var m string
+	opts = append(opts, WithListMarker(&m))
+
+	for {
+		r, err := azp.FilteredList(ctx, tagsFilter, opts...)
+		if err != nil {
+			return 0, err
+		}
+		count += int64(len(r.Items))
+		log.Debugf("Count %d (%v)", count, r.Marker)
+		if r.Marker == nil ||  *r.Marker == "" {
+			break
+		}
 	}
-
-	return int64(len(r.Items)), nil
+	log.Debugf("Count %d", count)
+	return count, nil
 }
 
 type FilterResponse struct {
@@ -57,6 +70,8 @@ type FilterResponse struct {
 //
 // Returns all blobs with the specific tag filter.
 func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string, opts ...Option) (*FilterResponse, error) {
+	log := logger.Sugar.FromContext(ctx)
+	defer log.close()
 	span, ctx := tracing.StartSpanFromContext(ctx, "FilteredList")
 	defer span.Finish()
 

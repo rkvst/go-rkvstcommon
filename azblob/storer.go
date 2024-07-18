@@ -27,6 +27,8 @@ type Storer struct {
 	containerURL    string
 	containerClient *ContainerClient
 	serviceClient   *ServiceClient
+
+	log Logger
 }
 
 // New returns new az blob read/write object
