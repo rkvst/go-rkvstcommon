@@ -102,23 +102,21 @@ func WithHandlers(h ...Handler) ReceiverOption {
 // than the peek lock timeout. For example: the default peek lock timeout is 60s and the default
 // renewal time is 50s.
 //
-// Note! Only use this if you know what you're doing and you require custom timeout behaviour. The
-// peek lock timeout is specified in terraform configs currently, as it is a property of
-// subscriptions or queues.
+// Note! Only use this if you know what you're doing and you require custom timeout behaviour.
 func WithRenewalTime(t int) ReceiverOption {
 	return func(r *Receiver) {
 		r.Cfg.RenewMessageTime = time.Duration(t) * time.Second
 	}
 }
 
-// NewReciver creates a new Receiver that will process a number of messages simultaneously.
+// NewReceiver creates a new Receiver that will process a number of messages simultaneously.
 // Each handler executes in its own goroutine.
 func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiver {
 	var r Receiver
 	return newReceiver(&r, log, cfg, opts...)
 }
 
-// function outlining (look it up).
+// function outlining.
 func newReceiver(r *Receiver, log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiver {
 	var options *azservicebus.ReceiverOptions
 	if cfg.Deadletter {
