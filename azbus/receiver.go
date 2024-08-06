@@ -68,7 +68,7 @@ type ReceiverConfig struct {
 	// If blank then messages are received from a Queue.
 	SubscriptionName string
 
-	// See azbus/receiver.go
+	ReceiveAndDelete bool
 	RenewMessageLock bool
 	RenewMessageTime time.Duration
 
@@ -83,7 +83,6 @@ type Receiver struct {
 	Cfg ReceiverConfig
 
 	log      Logger
-	mtx      sync.Mutex
 	receiver *azservicebus.Receiver
 	options  *azservicebus.ReceiverOptions
 	handlers []Handler
@@ -118,17 +117,21 @@ func NewReceiver(log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiv
 
 // function outlining.
 func newReceiver(r *Receiver, log Logger, cfg ReceiverConfig, opts ...ReceiverOption) *Receiver {
-	var options *azservicebus.ReceiverOptions
-	if cfg.Deadletter {
-		options = &azservicebus.ReceiverOptions{
-			ReceiveMode: azservicebus.ReceiveModePeekLock,
-			SubQueue:    azservicebus.SubQueueDeadLetter,
-		}
+	options := azservicebus.ReceiverOptions = azservicebus.ReceiverOptions{}
+	switch {
+	case cfg.Deadletter:
+		options.ReceiveMode = azservicebus.ReceiveModePeekLock
+		options.SubQueue = azservicebus.SubQueueDeadLetter
+	case cfg.ReceiveAndDelete:
+		options.ReceiveMode = azservicebus.ReceiveModeReceiveAndDelete
+		cfg.RenewMessageLock = false
+	default:
+		options.ReceiveMode = azservicebus.ReceiveModePeekLock
 	}
 
 	r.Cfg = cfg
 	r.azClient = NewAZClient(cfg.ConnectionString)
-	r.options = options
+	r.options = &options
 	r.handlers = []Handler{}
 	r.log = log.WithIndex("receiver", r.String())
 	for _, opt := range opts {
@@ -346,9 +349,6 @@ func (r *Receiver) open() error {
 func (r *Receiver) close_() {
 	if r != nil {
 		if r.receiver != nil {
-			r.mtx.Lock()
-			defer r.mtx.Unlock()
-
 			err := r.receiver.Close(context.Background())
 			if err != nil {
 				azerr := fmt.Errorf("%s: Error closing receiver: %w", r, NewAzbusError(err))
