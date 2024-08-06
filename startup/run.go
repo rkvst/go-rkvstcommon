@@ -11,12 +11,42 @@ import (
 	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
+const (
+	restProxyPort = "RESTPROXY_PORT"
+	port          = "PORT"
+)
+
+type runOptions struct {
+	portName string
+}
+
+type RunOption func(*runOptions)
+
+func UseRestproxyTracingPort() RunOption {
+	return func(o *runOptions) {
+		o.portName = restProxyPort
+	}
+}
+
+func NoTracingPort() RunOption {
+	return func(o *runOptions) {
+		o.portName = ""
+	}
+}
+
 type Runner func(logger.Logger) error
 
 // defers do not work in main() because of the os.Exit(
-func Run(serviceName string, portName string, run Runner) {
+func Run(serviceName string, run Runner, opts ...RunOption) {
+
 	logger.New(environment.GetLogLevel())
 	log := logger.Sugar.WithServiceName(serviceName)
+
+	o := runOptions{portName: port}
+
+	for _, opt := range opts {
+		opt(&o)
+	}
 
 	exitCode := func() int {
 		var exitCode int
@@ -33,8 +63,8 @@ func Run(serviceName string, portName string, run Runner) {
 		// log the useful kubernetes go configuration
 		log.Infof("Go Configuration: %+v", k8Config)
 
-		if portName != "" {
-			closer := tracing.NewTracer(log, portName)
+		if o.portName != "" {
+			closer := tracing.NewTracer(log, o.portName)
 			if closer != nil {
 				defer closer.Close()
 			}
