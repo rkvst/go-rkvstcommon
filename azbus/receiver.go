@@ -87,6 +87,8 @@ type Receiver struct {
 	receiver *azservicebus.Receiver
 	options  *azservicebus.ReceiverOptions
 	handlers []Handler
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 type ReceiverOption func(*Receiver)
@@ -235,8 +237,6 @@ func (r *Receiver) receiveMessages() error {
 
 	// Start all the workers
 	msgs := make(chan *ReceivedMessage, numberOfReceivedMessages)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	var wg sync.WaitGroup
 	for i := range numberOfReceivedMessages {
 		go func(rctx context.Context, ii int, rr *Receiver) {
@@ -262,7 +262,7 @@ func (r *Receiver) receiveMessages() error {
 					wg.Done()
 				}
 			}
-		}(ctx, i, r)
+		}(r.ctx, i, r)
 	}
 
 	// Extensively tested by loading messages and checking that the waitGroup logic always reset to zero so messages
@@ -274,7 +274,7 @@ func (r *Receiver) receiveMessages() error {
 	for {
 		var err error
 		var messages []*ReceivedMessage
-		messages, err = r.receiver.ReceiveMessages(ctx, numberOfReceivedMessages, nil)
+		messages, err = r.receiver.ReceiveMessages(r.ctx, numberOfReceivedMessages, nil)
 		if err != nil {
 			azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
 			r.log.Infof("%s", azerr)
@@ -305,6 +305,7 @@ func (r *Receiver) Listen() error {
 }
 
 func (r *Receiver) Shutdown(ctx context.Context) error {
+	r.cancel()
 	r.close_()
 	return nil
 }
@@ -340,25 +341,32 @@ func (r *Receiver) open() error {
 			return fmt.Errorf("failed to open handler: %w", err)
 		}
 	}
+	ctx, cancel := context.WithCancel(context.Background())
+	r.ctx = ctx
+	r.cancel = cancel
 	return nil
 }
 
 func (r *Receiver) close_() {
 	if r != nil {
+		r.log.Debugf("Close")
 		if r.receiver != nil {
 			r.mtx.Lock()
 			defer r.mtx.Unlock()
 
+			for j := range len(r.handlers) {
+				r.log.Debugf("Close handler")
+				r.handlers[j].Close()
+			}
+
+			r.log.Debugf("Close receiver")
 			err := r.receiver.Close(context.Background())
 			if err != nil {
 				azerr := fmt.Errorf("%s: Error closing receiver: %w", r, NewAzbusError(err))
 				r.log.Infof("%s", azerr)
 			}
-			r.receiver = nil
-			for j := range len(r.handlers) {
-				r.handlers[j].Close()
-			}
 			r.handlers = []Handler{}
+			r.receiver = nil
 		}
 	}
 }
