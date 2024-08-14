@@ -1,4 +1,4 @@
-package azbus
+package azblob
 
 import (
 	"github.com/datatrails/go-datatrails-common/logger"

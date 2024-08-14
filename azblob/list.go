@@ -14,24 +14,25 @@ import (
 // Count counts the number of blobs filtered by the given tags filter
 func (azp *Storer) Count(ctx context.Context, tagsFilter string, opts ...Option) (int64, error) {
 	log := logger.Sugar.FromContext(ctx)
-	defer log.close()
+	defer log.Close()
 
 	log.Debugf("Count")
 
 	var count int64
-	var m string
-	opts = append(opts, WithListMarker(&m))
+	var m ListMarker
 
 	for {
+		opts = append(opts, WithListMarker(m))
 		r, err := azp.FilteredList(ctx, tagsFilter, opts...)
 		if err != nil {
 			return 0, err
 		}
 		count += int64(len(r.Items))
 		log.Debugf("Count %d (%v)", count, r.Marker)
-		if r.Marker == nil ||  *r.Marker == "" {
+		if r.Marker == nil || *r.Marker == "" {
 			break
 		}
+		m = r.Marker
 	}
 	log.Debugf("Count %d", count)
 	return count, nil
@@ -71,7 +72,7 @@ type FilterResponse struct {
 // Returns all blobs with the specific tag filter.
 func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string, opts ...Option) (*FilterResponse, error) {
 	log := logger.Sugar.FromContext(ctx)
-	defer log.close()
+	defer log.Close()
 	span, ctx := tracing.StartSpanFromContext(ctx, "FilteredList")
 	defer span.Finish()
 
@@ -83,7 +84,7 @@ func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string, opts ...
 	}
 
 	if options.listMarker != nil {
-		span.SetTag("marker", *options.listMarker)
+		span.SetTag("marker", options.listMarker)
 	}
 	o := &azStorageBlob.ServiceFilterBlobsOptions{
 		Marker: options.listMarker,
@@ -107,12 +108,11 @@ func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string, opts ...
 		Items:      resp.Blobs,
 	}
 
-	r.Marker = resp.NextMarker
 	if r.Marker != nil {
 		span.SetTag("nextmarker", *r.Marker)
 	}
 
-	return r, err
+	return r, nil
 }
 
 type ListerResponse struct {
