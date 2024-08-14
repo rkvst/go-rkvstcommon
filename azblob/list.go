@@ -16,8 +16,6 @@ func (azp *Storer) Count(ctx context.Context, tagsFilter string, opts ...Option)
 	log := logger.Sugar.FromContext(ctx)
 	defer log.Close()
 
-	log.Debugf("Count")
-
 	var count int64
 	var m ListMarker
 
@@ -28,13 +26,11 @@ func (azp *Storer) Count(ctx context.Context, tagsFilter string, opts ...Option)
 			return 0, err
 		}
 		count += int64(len(r.Items))
-		log.Debugf("Count %d (%v)", count, r.Marker)
 		if r.Marker == nil || *r.Marker == "" {
 			break
 		}
 		m = r.Marker
 	}
-	log.Debugf("Count %d", count)
 	return count, nil
 }
 
