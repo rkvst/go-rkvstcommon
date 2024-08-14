@@ -13,15 +13,12 @@ import (
 
 // Count counts the number of blobs filtered by the given tags filter
 func (azp *Storer) Count(ctx context.Context, tagsFilter string, opts ...Option) (int64, error) {
-	log := logger.Sugar.FromContext(ctx)
-	defer log.Close()
 
 	var count int64
 	var m ListMarker
 
 	for {
-		opts = append(opts, WithListMarker(m))
-		r, err := azp.FilteredList(ctx, tagsFilter, opts...)
+		r, err := azp.FilteredList(ctx, tagsFilter, append(opts, WithListMarker(m))...)
 		if err != nil {
 			return 0, err
 		}
