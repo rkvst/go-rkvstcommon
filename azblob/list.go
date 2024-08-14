@@ -84,7 +84,7 @@ func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string, opts ...
 	}
 
 	if options.listMarker != nil {
-		span.SetTag("marker", options.listMarker)
+		span.SetTag("marker", *options.listMarker)
 	}
 	o := &azStorageBlob.ServiceFilterBlobsOptions{
 		Marker: options.listMarker,
