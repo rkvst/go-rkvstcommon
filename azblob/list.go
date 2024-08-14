@@ -64,8 +64,6 @@ type FilterResponse struct {
 //
 // Returns all blobs with the specific tag filter.
 func (azp *Storer) FilteredList(ctx context.Context, tagsFilter string, opts ...Option) (*FilterResponse, error) {
-	log := logger.Sugar.FromContext(ctx)
-	defer log.Close()
 	span, ctx := tracing.StartSpanFromContext(ctx, "FilteredList")
 	defer span.Finish()
 
