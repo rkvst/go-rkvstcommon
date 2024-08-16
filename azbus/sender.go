@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
+	"github.com/google/uuid"
 	otlog "github.com/opentracing/opentracing-go/log"
 
 	"github.com/datatrails/go-datatrails-common/tracing"
@@ -111,9 +112,6 @@ func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 
 	span, ctx := tracing.StartSpanFromContext(ctx, "Sender.Send")
 	defer span.Finish()
-	span.LogFields(
-		otlog.String("sender", s.Cfg.TopicOrQueueName),
-	)
 
 	// Get the logging context after we create the span as that may have created a new
 	// trace and stashed the traceid in the metadata.
@@ -127,8 +125,18 @@ func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 			return err
 		}
 	}
+
+	// We set and log a message ID so we can trace the message through the bus
+	id := uuid.New().String()
+	message.MessageID = &id
+
+	span.LogFields(
+		otlog.String("sender", s.Cfg.TopicOrQueueName),
+		otlog.String("message id", id),
+	)
+
 	size := int64(len(message.Body))
-	log.Debugf("%s: Msg Sized %d limit %d", s, size, s.maxMessageSizeInBytes)
+	log.Debugf("%s: Msg id %s Sized %d limit %d", s, id, size, s.maxMessageSizeInBytes)
 	if size > s.maxMessageSizeInBytes {
 		log.Debugf("Msg Sized %d > limit %d :%v", size, s.maxMessageSizeInBytes, ErrMessageOversized)
 		return fmt.Errorf("%s: Msg Sized %d > limit %d :%w", s, size, s.maxMessageSizeInBytes, ErrMessageOversized)
@@ -139,10 +147,10 @@ func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 
 	err = s.sender.SendMessage(ctx, message, nil)
 	if err != nil {
-		azerr := fmt.Errorf("Send failed in %s: %w", time.Since(now), NewAzbusError(err))
+		azerr := fmt.Errorf("Send message %s failed in %s: %w", id, time.Since(now), NewAzbusError(err))
 		log.Infof("%s", azerr)
 		return azerr
 	}
-	log.Debugf("Sending message took %s", time.Since(now))
+	log.Debugf("Sending message id %s took %s", id, time.Since(now))
 	return nil
 }

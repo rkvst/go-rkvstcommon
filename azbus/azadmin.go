@@ -45,7 +45,7 @@ func (c *AZAdminClient) Open() (*azadmin.Client, error) {
 		return nil, fmt.Errorf("failed to create admin client: config must provide either an account name or a connection string")
 	}
 
-	c.log.Infof("Get new Admin client using ConnectionString")
+	c.log.Debugf("Get new Admin client using ConnectionString")
 	admin, err := azadmin.NewClientFromConnectionString(
 		c.ConnectionString,
 		nil,

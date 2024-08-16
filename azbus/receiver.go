@@ -169,7 +169,7 @@ func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration ti
 
 	// the context wont have a trace span on it yet, so stick with the reciever logger instance
 
-	r.log.Debugf("Processing message %d", count)
+	r.log.Debugf("Processing message %d id %s", count, msg.MessageID)
 	disp, ctx, err := r.handleReceivedMessageWithTracingContext(ctx, msg, handler)
 	r.dispose(ctx, disp, err, msg)
 
@@ -179,16 +179,16 @@ func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration ti
 	log := r.log.FromContext(ctx)
 	defer log.Close()
 
-	log.Debugf("Processing message %d took %s", count, duration)
+	log.Debugf("Processing message %d id %s took %s", count, msg.MessageID, duration)
 
 	// This is safe because maxDuration is only defined if RenewMessageLock is false.
 	if !r.Cfg.RenewMessageLock && duration >= maxDuration {
-		log.Infof("WARNING: processing msg %d duration %v took more than %v seconds", count, duration, maxDuration)
+		log.Infof("WARNING: processing msg %d id %s duration %v took more than %v seconds", count, msg.MessageID, duration, maxDuration)
 		log.Infof("WARNING: please either enable SERVICEBUS_RENEW_LOCK or reduce SERVICEBUS_INCOMING_MESSAGES")
 		log.Infof("WARNING: both can be found in the helm chart for each service.")
 	}
 	if errors.Is(err, ErrPeekLockTimeout) {
-		log.Infof("WARNING: processing msg %d duration %s returned error: %v", count, duration, err)
+		log.Infof("WARNING: processing msg %d id %s duration %s returned error: %v", count, msg.MessageID, duration, err)
 		log.Infof("WARNING: please enable SERVICEBUS_RENEW_LOCK which can be found in the helm chart")
 	}
 }
