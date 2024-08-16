@@ -147,7 +147,7 @@ func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 
 	err = s.sender.SendMessage(ctx, message, nil)
 	if err != nil {
-		azerr := fmt.Errorf("Send message %s failed in %s: %w", id, time.Since(now), NewAzbusError(err))
+		azerr := fmt.Errorf("Send message id %s failed in %s: %w", id, time.Since(now), NewAzbusError(err))
 		log.Infof("%s", azerr)
 		return azerr
 	}
