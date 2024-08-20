@@ -10,6 +10,4 @@ type MsgSender interface {
 
 	Send(context.Context, *OutMessage) error
 	String() string
-
-	GetAZClient() AZClient
 }

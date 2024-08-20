@@ -9,6 +9,5 @@ type MsgReceiver interface {
 	Listen() error
 	Shutdown(context.Context) error
 
-	GetAZClient() AZClient
 	String() string
 }

@@ -48,10 +48,6 @@ func (s *Sender) String() string {
 	return s.Cfg.TopicOrQueueName
 }
 
-func (s *Sender) GetAZClient() AZClient {
-	return s.azClient
-}
-
 func (s *Sender) Close(ctx context.Context) {
 
 	var err error
@@ -80,8 +76,8 @@ func (s *Sender) Open() error {
 		return err
 	}
 
-	azadmin := NewAZAdminClient(s.log, s.Cfg.ConnectionString)
-	s.maxMessageSizeInBytes, err = azadmin.GetQueueMaxMessageSize(s.Cfg.TopicOrQueueName)
+	azadmin := newazAdminClient(s.log, s.Cfg.ConnectionString)
+	s.maxMessageSizeInBytes, err = azadmin.getQueueMaxMessageSize(s.Cfg.TopicOrQueueName)
 	if err != nil {
 		azerr := fmt.Errorf("%s: failed to get sender properties: %w", s, NewAzbusError(err))
 		s.log.Infof("%s", azerr)

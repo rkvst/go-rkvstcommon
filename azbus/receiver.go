@@ -144,10 +144,6 @@ func newReceiver(r *Receiver, log Logger, cfg ReceiverConfig, opts ...ReceiverOp
 	return r
 }
 
-func (r *Receiver) GetAZClient() AZClient {
-	return r.azClient
-}
-
 // String - returns string representation of receiver.
 func (r *Receiver) String() string {
 	// No log function calls in this method please.
