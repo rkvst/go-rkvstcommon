@@ -24,22 +24,36 @@ vars:
 tasks:
 
   format:
-    desc: Quality assurance of code
-    summary: "format sources (go fmt)"
-    cmds:
-      - gofmt -l -s -w .
-
-  lint:
-    desc: Quality assurance of code
+    summary: Quality assurance of code
     cmds:
       - |
-        golangci-lint --version
-        go vet ./...
+        which go
+        go fix ./...
+        which goimports
         goimports {{.VERBOSE}} -w .
-        golangci-lint {{.VERBOSE}} run --timeout 10m ./...
+        which gofmt
         gofmt -l -s -w .
 
+  lint:
+    summary: Quality assurance of code
+    cmds:
+      - |
+        which go
+        go vet ./...
+        which golangci-lint
+        golangci-lint --version
+        golangci-lint {{.VERBOSE}} run --timeout 10m ./...
+
+  modules:
+    summary: Upgrade modules
+    cmds:
+      - |
+        GATEWAYVERSION=$(protoc-gen-grpc-gateway -version | cut -d',' -f1 | cut -d' ' -f2)
+        go get -u github.com/grpc-ecosystem/grpc-gateway/v2@v${GATEWAYVERSION}
+        go mod tidy
+        go mod verify
+
   unit-tests:
-    desc: "run unit tests"
+    summary: "run unit tests"
     cmds:
       - go test {{.GO_TEST_TAGS}} ./...

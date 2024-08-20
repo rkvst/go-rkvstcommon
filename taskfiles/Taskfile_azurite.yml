@@ -24,6 +24,7 @@ tasks:
     cmds:
       - task: cleanup
       - task: start
+
   start:
     desc: start azurite azure local storage emulator in a named docker container
     summary: |

@@ -17,7 +17,7 @@ require (
 	github.com/gorilla/securecookie v1.1.1
 	github.com/gorilla/sessions v1.2.1
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.17.1
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
 	github.com/ldclabs/cose/go v0.0.0-20221214142927-d22c1cfc2154
 	github.com/lestrrat-go/jwx v1.2.29
 	github.com/nuts-foundation/go-did v0.6.4
@@ -31,8 +31,8 @@ require (
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.25.0
 	golang.org/x/sync v0.7.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20230822172742-b8732ec3820d
-	google.golang.org/grpc v1.57.1
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240513163218-0867130af1f8
+	google.golang.org/grpc v1.64.0
 )
 
 require (
@@ -78,7 +78,7 @@ require (
 	github.com/gabriel-vasile/mimetype v1.4.2
 	github.com/godbus/dbus/v5 v5.0.4 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/golang/protobuf v1.5.3 // indirect
+	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/opencontainers/runtime-spec v1.0.2 // indirect
 	github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492 // indirect
@@ -90,7 +90,7 @@ require (
 	golang.org/x/net v0.27.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20230822172742-b8732ec3820d // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240513163218-0867130af1f8 // indirect
+	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

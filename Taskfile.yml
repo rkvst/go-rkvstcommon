@@ -26,25 +26,55 @@ includes:
 
 tasks:
 
-  test:preflight:
-    desc: do all necessary cleanup and preparation for a test run
+  default:
+    desc: Default task lists all available tasks to run.
     cmds:
-      - task: azurite:preflight
+      - which task
+      - |
+        task --list
 
-  qa-basic:
+  environment:
+    desc: Show environment and location of tools executables.
+    cmds:
+      - env | sort
+      - which go
+
+  precommit:
     desc: |
       format the source and run all the quality checks
       (Does not run unit tests)
     cmds:
       - task: codeqa:format
       - task: codeqa:lint
+      - task: codeqa:modules
 
   build:
     desc: ensure go build works for all packages
     cmds:
       - go build -v ./...
 
-  test:
+  format:
+    desc: format the code
+    cmds:
+      - task: codeqa:format
+
+  lint:
+    desc: run the linter
+    cmds:
+      - task: codeqa:lint
+
+  go:modules:
+    desc: ensure that go.mod is up to date
+    cmds:
+      - task: codeqa:modules
+
+  test:unit:
     desc: run the tests
     cmds:
       - task: codeqa:unit-tests
+
+  test:setup:
+    desc: do all necessary cleanup and preparation for a test run
+    cmds:
+      - task: azurite:preflight
+
