@@ -21,7 +21,7 @@ func (g *Client) Open() error {
 	var conn *grpc.ClientConn
 
 	g.log.Debugf("Open %s client at %v", g.name, g.address)
-	conn, err = grpc.Dial(g.address, g.options...) //nolint:staticcheck
+	conn, err = grpc.NewClient(g.address, g.options...)
 	if err != nil {
 		return err
 	}
