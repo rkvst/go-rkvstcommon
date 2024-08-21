@@ -48,8 +48,6 @@ tasks:
     summary: Upgrade modules
     cmds:
       - |
-        GATEWAYVERSION=$(protoc-gen-grpc-gateway -version | cut -d',' -f1 | cut -d' ' -f2)
-        go get -u github.com/grpc-ecosystem/grpc-gateway/v2@v${GATEWAYVERSION}
         go mod tidy
         go mod verify
 
