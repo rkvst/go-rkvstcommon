@@ -10,6 +10,10 @@ import (
 	"github.com/datatrails/go-datatrails-common/logger"
 )
 
+var (
+	ErrUnspecifiedContainer = errors.New("storer: container is unspecified")
+)
+
 // so we dont have to import azure blob package anywhere else
 type ContainerClient = azStorageBlob.ContainerClient
 type ServiceClient = azStorageBlob.ServiceClient
@@ -58,9 +62,8 @@ func New(
 	rootURL := secret.URL
 
 	if container == "" {
-		msg := "storer: container is unspecified"
-		logger.Sugar.Infof(msg)
-		return nil, errors.New(msg)
+		logger.Sugar.Infof("Storer: %v", ErrUnspecifiedContainer)
+		return nil, ErrUnspecifiedContainer
 	}
 	azp := &Storer{
 		AccountName:   accountName,

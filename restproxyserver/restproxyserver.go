@@ -120,7 +120,7 @@ func WithRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServe
 // ignored.
 func WithOptionalRegisterHandlers(registerers ...RegisterRESTProxyServer) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
-		for i := 0; i < len(registerers); i++ {
+		for i := range len(registerers) {
 			registerer := registerers[i]
 			if registerer != nil && !reflect.ValueOf(registerer).IsNil() {
 				g.registers = append(g.registers, registerer)
@@ -141,7 +141,7 @@ func WithHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
 // be ignored.
 func WithOptionalHTTPHandlers(handlers ...HandleChainFunc) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
-		for i := 0; i < len(handlers); i++ {
+		for i := range len(handlers) {
 			handler := handlers[i]
 			if handler != nil && !reflect.ValueOf(handler).IsNil() {
 				g.handlers = append(g.handlers, handler)

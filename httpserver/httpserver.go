@@ -43,7 +43,7 @@ func WithHandlers(handlers ...HandleChainFunc) ServerOption {
 // it is ignored.
 func WithOptionalHandlers(handlers ...HandleChainFunc) ServerOption {
 	return func(s *Server) {
-		for i := 0; i < len(handlers); i++ {
+		for i := range len(handlers) {
 			handler := handlers[i]
 			if handler != nil && !reflect.ValueOf(handler).IsNil() {
 				s.handlers = append(s.handlers, handler)

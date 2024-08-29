@@ -240,20 +240,24 @@ func (r *Receiver) receiveMessages(ctx context.Context) error {
 				select {
 				case <-rctx.Done():
 					rr.log.Debugf("Stop worker %d", ii)
+					wg.Done()
 					return
 				case msg := <-msgs:
-					var renewCtx context.Context
-					var renewCancel context.CancelFunc
-					var maxDuration time.Duration
-					if rr.Cfg.RenewMessageLock {
-						renewCtx, renewCancel = context.WithCancel(rctx)
-						go rr.renewMessageLock(renewCtx, ii+1, msg)
-					} else {
-						// we need a timeout if RenewMessageLock is disabled
-						renewCtx, renewCancel, maxDuration = rr.setTimeout(rctx, rr.log, msg)
-					}
-					rr.processMessage(renewCtx, ii+1, maxDuration, msg, rr.handlers[ii])
-					renewCancel()
+					func(rrctx context.Context) {
+						var renewCtx context.Context
+						var renewCancel context.CancelFunc
+						var maxDuration time.Duration
+						if rr.Cfg.RenewMessageLock {
+							renewCtx, renewCancel = context.WithCancel(rrctx)
+							go rr.renewMessageLock(renewCtx, ii+1, msg)
+							defer renewCancel()
+						} else {
+							// we need a timeout if RenewMessageLock is disabled
+							renewCtx, renewCancel, maxDuration = rr.setTimeout(rrctx, rr.log, msg)
+							defer renewCancel()
+						}
+						rr.processMessage(renewCtx, ii+1, maxDuration, msg, rr.handlers[ii])
+					}(rctx)
 					wg.Done()
 				}
 			}

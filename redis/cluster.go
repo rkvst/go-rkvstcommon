@@ -79,7 +79,7 @@ func FromEnvOrFatal(log Logger) RedisConfig {
 	cfg.clusterOptions.PoolSize = nodePoolSize
 	cfg.clusterOptions.Addrs = make([]string, 0, cfg.Size)
 	cfg.clusterOptions.MaxRedirects = cfg.Size
-	for i := 0; i < cfg.Size; i++ {
+	for i := range cfg.Size {
 		suffix := fmt.Sprintf(RedisNodeAddressFmtSuffix, i)
 		cfg.clusterOptions.Addrs = append(
 			cfg.clusterOptions.Addrs,
