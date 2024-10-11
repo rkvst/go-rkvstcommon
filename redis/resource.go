@@ -285,11 +285,11 @@ func (r *Resource) getLimit(ctx context.Context, tenantID string) (int64, error)
 		return limit, nil
 	}
 	// we haven't got the redis limit therefore attempt to retrieve from upstream
-	return r.refreshLimit(ctx, tenantID)
+	return r.RefreshLimit(ctx, tenantID)
 }
 
-// refreshLimit gets the limit for a given tenant from upstream.
-func (r *Resource) refreshLimit(ctx context.Context, tenantID string) (int64, error) {
+// RefreshLimit gets the limit for a given tenant from upstream.
+func (r *Resource) RefreshLimit(ctx context.Context, tenantID string) (int64, error) {
 	log := r.Log().FromContext(ctx)
 	defer log.Close()
 

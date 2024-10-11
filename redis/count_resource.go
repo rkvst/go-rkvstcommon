@@ -301,7 +301,7 @@ func (cr *CountResource) Available(ctx context.Context, tenantID string) (int64,
 	}
 
 	// count is now zero so check the actual number of resources and adjust if necessary.
-	newLimit, err := cr.refreshLimit(ctx, tenantID)
+	newLimit, err := cr.RefreshLimit(ctx, tenantID)
 	if err != nil {
 		log.Infof("reset count failure: %v", err)
 		newLimit = limit
