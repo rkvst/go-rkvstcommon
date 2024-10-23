@@ -57,6 +57,7 @@ type Client interface {
 	Do(ctx context.Context, args ...any) *redis.Cmd
 	Set(ctx context.Context, key string, value any, expiration time.Duration) *redis.StatusCmd
 	SetNX(ctx context.Context, key string, value any, expiration time.Duration) *redis.BoolCmd
+	Close() error
 }
 
 type ClientContext struct {
@@ -315,6 +316,15 @@ func (r *Resource) nakedWrite(ctx context.Context, count int64, tenantID string)
 	err := r.setOperation(ctx, opSetCount, tenantID, count)
 	if err != nil {
 		return DoError(err, r.countPath(tenantID))
+	}
+
+	return nil
+}
+
+// Close closes the resource and client connection to redis
+func (r *Resource) Close() error {
+	if r.client != nil {
+		return r.client.Close()
 	}
 
 	return nil
