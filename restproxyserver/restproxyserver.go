@@ -74,7 +74,7 @@ func SetQueryParameterParser(p QueryParameterParser) RESTProxyServerOption {
 	}
 }
 
-// WithIncomingHeaderMatcher adds an intercepror that matches header values.
+// WithIncomingHeaderMatcher adds an interceptor that matches header values.
 func WithIncomingHeaderMatcher(o HeaderMatcherFunc) RESTProxyServerOption {
 	return func(g *RESTProxyServer) {
 		if o != nil && !reflect.ValueOf(o).IsNil() {

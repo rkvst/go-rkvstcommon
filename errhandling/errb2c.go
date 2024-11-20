@@ -47,7 +47,7 @@ func (e *ErrB2C) WithErrorString(log Logger, errString string) error {
 	if _, scanErr := fmt.Sscanf(errString, b2cFmtString,
 		&e.APIVersion, &e.Status, &e.UserMessage); scanErr != nil {
 
-		log.Infof("scan error: %v", scanErr)
+		log.Debugf("scan error: %v", scanErr)
 		return scanErr
 	}
 
@@ -72,7 +72,7 @@ func GetErrB2c(ctx context.Context, err error) (*ErrB2C, error) {
 
 	// chance it is a status.Error (can't access status.Error as its part of an internal package)
 	if !strings.HasPrefix(err.Error(), grpcErrPrefix) {
-		log.Infof("error is not b2c error: %v", err)
+		log.Debugf("error is not b2c error: %v", err)
 		return nil, err
 	}
 
@@ -80,7 +80,7 @@ func GetErrB2c(ctx context.Context, err error) (*ErrB2C, error) {
 	b2cErrString := strings.TrimPrefix(err.Error(), grpcErrPrefix)
 
 	if convErr := errB2C.WithErrorString(log, b2cErrString); convErr != nil {
-		log.Infof("unable to add error string: %v", convErr)
+		log.Debugf("unable to add error string: %v", convErr)
 		return nil, convErr
 	}
 

@@ -163,7 +163,7 @@ func (r *Receiver) String() string {
 func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler Handler) {
 	now := time.Now()
 
-	// the context wont have a trace span on it yet, so stick with the reciever logger instance
+	// the context wont have a trace span on it yet, so stick with the receiver logger instance
 
 	r.log.Debugf("Processing message %d id %s", count, msg.MessageID)
 	disp, ctx, err := r.handleReceivedMessageWithTracingContext(ctx, msg, handler)
@@ -230,7 +230,11 @@ func (r *Receiver) receiveMessages(ctx context.Context) error {
 		r.Cfg.RenewMessageLock,
 	)
 
-	// Start all the workers
+	// Start all the workers. Each worker runs forever waiting on a channel for received
+	// messages. The waitgroup semantics is used to indicate whether the current message has
+	// been processed. The worker goroutines will terminate on a context.cancel between processing
+	// any messages. If there are any unprocessed messages then these will eventually timeout and
+	// azure servicebus will re-schedule them for processing.
 	msgs := make(chan *ReceivedMessage, numberOfReceivedMessages)
 	var wg sync.WaitGroup
 	for i := range numberOfReceivedMessages {
@@ -240,7 +244,6 @@ func (r *Receiver) receiveMessages(ctx context.Context) error {
 				select {
 				case <-rctx.Done():
 					rr.log.Debugf("Stop worker %d", ii)
-					wg.Done()
 					return
 				case msg := <-msgs:
 					func(rrctx context.Context) {
@@ -266,8 +269,8 @@ func (r *Receiver) receiveMessages(ctx context.Context) error {
 
 	// Extensively tested by loading messages and checking that the waitGroup logic always reset to zero so messages
 	// continue to be processed. The sync.Waitgroup will panic if the internal counter ever goes to less than zero - this is
-	// what we want as then the service will restart. Extensive testing has never encountered this.
-	// The load tests wree conducted with over 1000 simplhash anchor messages present and with NumberOfReceivedMessage=8.
+	// what we want as then the service will restart.
+	// The load tests were conducted with over 1000 simplhash anchor messages present and with NumberOfReceivedMessage=8.
 	// The code mosly read 8 messages at a time - sometimes only 3 or 4 were read - either way the code processed the
 	// messages successfully and only finished once the receiver was empty.
 	for {
@@ -282,6 +285,7 @@ func (r *Receiver) receiveMessages(ctx context.Context) error {
 		total := len(messages)
 		r.log.Debugf("total messages %d", total)
 
+		// Use the waitgroup to indicate when all messages have been processed.
 		for i := range total {
 			wg.Add(1)
 			msgs <- messages[i]
