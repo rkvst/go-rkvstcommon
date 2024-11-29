@@ -10,6 +10,8 @@ import (
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_otrace "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-midleware/recovery"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
@@ -93,9 +95,17 @@ func New(log Logger, name string, port string, opts ...GRPCServerOption) GRPCSer
 	for _, opt := range opts {
 		opt(&g)
 	}
+
+	interceptors := []grpc.UnaryServerInterceptor{grpc_recovery.UnaryServerInterceptor}
+	interceptors = append(interceptors, g.interceptors...)
+
 	server := grpc.NewServer(
 		grpc.UnaryInterceptor(
-			grpc_middleware.ChainUnaryServer(g.interceptors...),
+			grpc_middleware.ChainUnaryServer(interceptors...),
+		),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(
+			grpc_recovery.StreamServerInterceptor(),
+		),
 		),
 	)
 
