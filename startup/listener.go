@@ -44,6 +44,17 @@ func WithListeners(listeners ...Listener) ListenersOption {
 	}
 }
 
+// WithOptionalListeners add multiple listeners. Nil listeners are ignored.
+func WithOptionalListeners(listeners ...Listener) ListenersOption {
+	return func(l *Listeners) {
+		for _, listener := range listeners {
+			if listener != nil {
+				l.listeners = append(l.listeners, listener)
+			}
+		}
+	}
+}
+
 func NewListeners(log Logger, name string, opts ...ListenersOption) Listeners {
 	l := Listeners{name: strings.ToLower(name)}
 	for _, opt := range opts {
