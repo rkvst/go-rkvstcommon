@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_recovery "github.com/grpc-ecosystem/go-grpc-middleware/recovery"
 	grpc_otrace "github.com/grpc-ecosystem/go-grpc-middleware/tracing/opentracing"
 	grpc_validator "github.com/grpc-ecosystem/go-grpc-middleware/validator"
-	grpc_recovery "github.com/grpc-ecosystem/go-grpc-midleware/recovery"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
