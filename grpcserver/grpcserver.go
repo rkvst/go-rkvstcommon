@@ -96,7 +96,7 @@ func New(log Logger, name string, port string, opts ...GRPCServerOption) GRPCSer
 		opt(&g)
 	}
 
-	interceptors := []grpc.UnaryServerInterceptor{grpc_recovery.UnaryServerInterceptor}
+	interceptors := []grpc.UnaryServerInterceptor{grpc_recovery.UnaryServerInterceptor()}
 	interceptors = append(interceptors, g.interceptors...)
 
 	server := grpc.NewServer(
