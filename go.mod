@@ -83,7 +83,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.4
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/opencontainers/runtime-spec v1.2.0 // indirect
 	github.com/opentracing-contrib/go-observer v0.0.0-20170622124052-a52f23424492 // indirect
