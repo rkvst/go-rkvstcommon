@@ -90,8 +90,8 @@ func NewReaderNoAuth(url string, opts ...ReaderOption) (Reader, error) {
 	return azp, nil
 }
 
-// NewReaderDefaultAuth is a azure blob reader client that uses workload idendity to
-// obtain credentials.
+// NewReaderDefaultAuth is a azure blob reader client that obtains credentials from the
+// environment - including aad pod identity / workload identity.
 func NewReaderDefaultAuth(url string, opts ...ReaderOption) (Reader, error) {
 	var err error
 	if url == "" {
