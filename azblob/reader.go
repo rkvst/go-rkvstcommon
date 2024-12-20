@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 )
 
@@ -44,7 +45,6 @@ type Reader interface {
 //
 //	url: https://app.datatrails.ai/verifiabledata
 func NewReaderNoAuth(url string, opts ...ReaderOption) (Reader, error) {
-
 	var err error
 	if url == "" {
 		return nil, errors.New("url is a required parameter and cannot be empty")
@@ -62,6 +62,61 @@ func NewReaderNoAuth(url string, opts ...ReaderOption) (Reader, error) {
 	}
 	azp.serviceClient, err = azStorageBlob.NewServiceClientWithNoCredential(
 		url,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// check if we need the container client as well,
+	//  if the container is an empty string just return the storer with
+	//  the service client
+	//
+	// NOTE: Only listing is available to the serviceClient
+	if readerOptions.container == "" {
+		return azp, nil
+	}
+
+	azp.containerURL = fmt.Sprintf(
+		"%s%s",
+		url,
+		readerOptions.container,
+	)
+	azp.containerClient, err = azp.serviceClient.NewContainerClient(readerOptions.container)
+	if err != nil {
+		return nil, err
+	}
+
+	return azp, nil
+}
+
+// NewReaderDefaultAuth is a azure blob reader client that uses workload idendity to
+// obtain credentials.
+func NewReaderDefaultAuth(url string, opts ...ReaderOption) (Reader, error) {
+	var err error
+	if url == "" {
+		return nil, errors.New("url is a required parameter and cannot be empty")
+	}
+
+	readerOptions := ParseReaderOptions(opts...)
+
+	azp := &Storer{
+		AccountName:   readerOptions.accountName, // just for logging
+		ResourceGroup: "",                        // just for logging
+		Subscription:  "",                        // just for logging
+		Container:     readerOptions.container,
+		credential:    nil,
+		rootURL:       url,
+	}
+
+	credentials, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, err
+	}
+
+	azp.serviceClient, err = azStorageBlob.NewServiceClient(
+		url,
+		credentials,
 		nil,
 	)
 	if err != nil {
