@@ -150,3 +150,56 @@ func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 	log.Debugf("Sending message id %s took %s", id, time.Since(now))
 	return nil
 }
+
+func (s *Sender) NewMessageBatch(ctx context.Context) (*OutMessageBatch, error) {
+	return s.sender.NewMessageBatch(ctx, nil)
+}
+
+// BatchAddMessage calls Addmessage on batch
+// Note: this method is a direct pass through and exists only to provide a
+// mockable interface for adding messages to a batch.
+func (s *Sender) BatchAddMessage(batch *OutMessageBatch, m *OutMessage, options *azservicebus.AddMessageOptions) error {
+	return batch.AddMessage(m, options)
+}
+
+// SendBatch submits a message batch to the broker. Ignores cancellation.
+func (s *Sender) SendBatch(ctx context.Context, batch *OutMessageBatch) error {
+
+	// Without this fix eventsourcepoller and similar services repeatedly context cancel and repeatedly
+	// restart.
+	ctx = context.WithoutCancel(ctx)
+
+	var err error
+
+	now := time.Now()
+
+	span, ctx := tracing.StartSpanFromContext(ctx, "Sender.SendBatch")
+	defer span.Finish()
+	span.LogFields(
+		otlog.String("sender", s.Cfg.TopicOrQueueName),
+	)
+
+	// Get the logging context after we create the span as that may have created a new
+	// trace and stashed the traceid in the metadata.
+	log := s.log.FromContext(ctx)
+	defer log.Close()
+
+	// boots & braces
+	if s.sender == nil {
+		err = s.Open()
+		if err != nil {
+			return err
+		}
+	}
+	// Note: sizing must be dealt with as the batch is created and accumulated.
+
+	// Note: the first message properties (including application properties) are established by the first message in the batch
+
+	err = s.sender.SendMessageBatch(ctx, batch, nil)
+	if err != nil {
+		azerr := fmt.Errorf("SendMessageBatch failed in %s: %w", time.Since(now), NewAzbusError(err))
+		log.Infof("%s", azerr)
+		return azerr
+	}
+	return nil
+}

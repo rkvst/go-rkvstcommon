@@ -15,14 +15,27 @@ var (
 )
 
 // Handler processes a ReceivedMessage.
+// Use this style of handler to take advantage of the automatic peek lock renewal and disposal of messages.
 type Handler interface {
 	Handle(context.Context, *ReceivedMessage) (Disposition, context.Context, error)
 	Open() error
 	Close()
 }
 
+// BatchHandler is completely responsible for the processing of a batch of messages.
+// Implementations take complete responsibility for the peek lock renewal and disposal of messages.
+type BatchHandler interface {
+	Handle(context.Context, Disposer, []*ReceivedMessage) error
+	Open() error
+	Close()
+}
+
 const (
-	// RenewalTime is the how often we want to renew the message PEEK lock
+	// DefaultRenewalTime is the how often we want to renew the message PEEK lock
+	// If RenewMessageLock is true then this is the default value for RenewMessageTime.
+	//
+	// Note that the default aligns with the default value for topics and queues in Azure Service Bus.
+	// Unless the topic or queue has been configured with a different value, you should not need to change this.
 	//
 	// Inspection of the topics and subscription shows that the PeekLock timeout is one minute.
 	//
@@ -39,7 +52,7 @@ const (
 	// normal test suites.
 	//
 	// Set to 50 seconds, well within the 60 seconds peek lock timeout
-	RenewalTime = 50 * time.Second
+	DefaultRenewalTime = 50 * time.Second
 )
 
 // Settings for Receivers:
@@ -69,11 +82,21 @@ type ReceiverConfig struct {
 	SubscriptionName string
 
 	// See azbus/receiver.go
+	// Note: RenewMessageLock has no effect when using the batched handler (BatchSize > 0)
 	RenewMessageLock bool
+
+	// RenewMessageTime is the how often we want to renew the message PEEK lock
 	RenewMessageTime time.Duration
 
 	// If a deadletter receiver then this is true
 	Deadletter bool
+
+	// Receive messages in a batch and completely delegate processing to a single dedicated handler
+	BatchSize int
+
+	// A batch operation must abandon any message that takes longer than this to process.
+	// Defaults to DefaultRenewalTime.
+	BatchDeadline time.Duration
 }
 
 // Receiver to receive messages on  a queue
@@ -82,20 +105,37 @@ type Receiver struct {
 
 	Cfg ReceiverConfig
 
-	log      Logger
-	mtx      sync.Mutex
-	receiver *azservicebus.Receiver
-	options  *azservicebus.ReceiverOptions
-	handlers []Handler
+	log          Logger
+	mtx          sync.Mutex
+	receiver     *azservicebus.Receiver
+	options      *azservicebus.ReceiverOptions
+	handlers     []Handler
 	cancel   context.CancelFunc
+	batchHandler BatchHandler
 }
 
 type ReceiverOption func(*Receiver)
 
 // WithHandlers
+// Add's individual message handlers to the receiver.
+// Mutually exclusive with WithBatchHandler.
 func WithHandlers(h ...Handler) ReceiverOption {
 	return func(r *Receiver) {
 		r.handlers = append(r.handlers, h...)
+	}
+}
+
+func WithBatchHandler(h BatchHandler) ReceiverOption {
+	return func(r *Receiver) {
+		r.batchHandler = h
+	}
+}
+
+// WithBatchDeadline sets the context deadline used for the batch operation.
+// If this is not set, the default is DefaultRenewalTime.
+func WithBatchDeadline(d time.Duration) ReceiverOption {
+	return func(r *Receiver) {
+		r.Cfg.BatchDeadline = d
 	}
 }
 
@@ -138,10 +178,28 @@ func newReceiver(r *Receiver, log Logger, cfg ReceiverConfig, opts ...ReceiverOp
 
 	// Set this to a default that corresponds to the az servicebus default peek-lock timeout
 	if r.Cfg.RenewMessageTime == 0 {
-		r.Cfg.RenewMessageTime = RenewalTime
+		r.Cfg.RenewMessageTime = DefaultRenewalTime
+	}
+
+	if r.Cfg.BatchDeadline == 0 {
+		r.Cfg.BatchDeadline = DefaultRenewalTime
 	}
 
 	return r
+}
+
+// Note: these accessors are intended for batch receivers which take on much more of the responsibility of message lifecycle management.
+
+func (r *Receiver) GetAZClient() AZClient {
+	return r.azClient
+}
+
+func (r *Receiver) GetAZReceiver() *azservicebus.Receiver {
+	return r.receiver
+}
+
+func (r *Receiver) GetAZReceiverOptions() *azservicebus.ReceiverOptions {
+	return r.options
 }
 
 // String - returns string representation of receiver.
@@ -159,6 +217,62 @@ func (r *Receiver) String() string {
 	return fmt.Sprintf("%s", r.Cfg.TopicOrQueueName)
 }
 
+func (r *Receiver) receiveMessageBatches() error {
+	r.log.Debugf("BatchSize %d, BatchDeadline: %v", r.Cfg.BatchSize, r.Cfg.BatchDeadline)
+
+	for {
+		err := r.receiveOneMessageBatch()
+		if err != nil {
+			return err
+		}
+	}
+}
+
+func (r *Receiver) receiveOneMessageBatch() error {
+
+	if r.Cfg.BatchSize == 0 {
+		return fmt.Errorf("BatchSize must be greater than zero")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	var err error
+	var messages []*ReceivedMessage
+	messages, err = r.receiver.ReceiveMessages(ctx, r.Cfg.BatchSize, nil)
+	if err != nil {
+		azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
+		r.log.Infof("%s", azerr)
+		return azerr
+	}
+	total := len(messages)
+	r.log.Debugf("total messages %d", total)
+
+	// set a deadline for the batch operation, this should be shorter than the peak lock timeout
+	batchCtx, cancel := context.WithTimeout(ctx, r.Cfg.BatchDeadline)
+	defer cancel()
+
+	// creating the span props from the first message is a bit arbitrary, but it's the best we can do
+	spanProps := make(map[string]string)
+	for k, v := range messages[0].ApplicationProperties {
+		if value, ok := v.(string); ok {
+			spanProps[k] = value
+		}
+	}
+
+	batchCtx, span := r.CreateBatchReceivedMessageTracingContext(ctx, spanProps)
+	defer span.Finish()
+
+	err = r.batchHandler.Handle(batchCtx, r, messages)
+	if err != nil {
+		r.log.Infof("terminating due to batch handler err: %v", err)
+		return err
+	}
+
+	r.log.Debugf("Processed %d messages", total)
+
+	return nil
+}
+
 // processMessage disposes of messages and emits 2 log messages detailing how long processing took.
 func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler Handler) {
 	now := time.Now()
@@ -167,7 +281,7 @@ func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration ti
 
 	r.log.Debugf("Processing message %d id %s", count, msg.MessageID)
 	disp, ctx, err := r.handleReceivedMessageWithTracingContext(ctx, msg, handler)
-	r.dispose(ctx, disp, err, msg)
+	r.Dispose(ctx, disp, err, msg)
 
 	duration := time.Since(now)
 
@@ -306,7 +420,10 @@ func (r *Receiver) Listen() error {
 		r.log.Infof("%s", azerr)
 		return azerr
 	}
-	return r.receiveMessages(ctx)
+	if r.Cfg.BatchSize == 0 {
+		return r.receiveMessages()
+	}
+	return r.receiveMessageBatches()
 }
 
 func (r *Receiver) Shutdown(ctx context.Context) error {
@@ -320,6 +437,15 @@ func (r *Receiver) open() error {
 
 	if r.receiver != nil {
 		return nil
+	}
+
+	// Check the config is consistent with the handlers
+	if r.Cfg.BatchSize > 0 && (len(r.handlers) != 0 || r.batchHandler == nil) {
+		return fmt.Errorf("batch delegation can only be used with a batch handler")
+	}
+
+	if len(r.handlers) > 0 && (r.batchHandler != nil || r.Cfg.BatchSize > 0) {
+		return fmt.Errorf("individual message handlers are not compatible with batch handling")
 	}
 
 	client, err := r.azClient.azClient()
@@ -346,6 +472,12 @@ func (r *Receiver) open() error {
 			return fmt.Errorf("failed to open handler: %w", err)
 		}
 	}
+	if r.batchHandler != nil {
+		err = r.batchHandler.Open()
+		if err != nil {
+			return fmt.Errorf("failed to open batch handler: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -370,6 +502,10 @@ func (r *Receiver) close_() {
 			r.handlers = []Handler{}
 			r.receiver = nil
 			r.cancel = nil
+			if r.batchHandler != nil {
+				r.batchHandler.Close()
+				r.batchHandler = nil
+			}
 		}
 	}
 }

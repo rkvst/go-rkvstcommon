@@ -20,6 +20,10 @@ const (
 	CompleteDisposition
 )
 
+type Disposer interface {
+	Dispose(ctx context.Context, d Disposition, err error, msg *ReceivedMessage)
+}
+
 func (d Disposition) String() string {
 	switch {
 	case d == DeadletterDisposition:
@@ -34,7 +38,7 @@ func (d Disposition) String() string {
 	return fmt.Sprintf("Unknown%d", d)
 }
 
-func (r *Receiver) dispose(ctx context.Context, d Disposition, err error, msg *ReceivedMessage) {
+func (r *Receiver) Dispose(ctx context.Context, d Disposition, err error, msg *ReceivedMessage) {
 	switch {
 	case d == DeadletterDisposition:
 		r.deadLetter(ctx, err, msg)
@@ -114,7 +118,7 @@ func (r *Receiver) complete(ctx context.Context, err error, msg *ReceivedMessage
 	if err != nil {
 		log.Infof("Complete Message %v", err)
 	} else {
-		log.Infof("Complete Message")
+		log.Debugf("Complete Message")
 	}
 
 	err1 := r.receiver.CompleteMessage(ctx, msg, nil)
