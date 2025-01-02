@@ -110,7 +110,7 @@ type Receiver struct {
 	receiver     *azservicebus.Receiver
 	options      *azservicebus.ReceiverOptions
 	handlers     []Handler
-	cancel   context.CancelFunc
+	cancel       context.CancelFunc
 	batchHandler BatchHandler
 }
 
@@ -259,7 +259,7 @@ func (r *Receiver) receiveOneMessageBatch() error {
 		}
 	}
 
-	batchCtx, span := r.CreateBatchReceivedMessageTracingContext(ctx, spanProps)
+	batchCtx, span := r.CreateBatchReceivedMessageTracingContext(batchCtx, spanProps)
 	defer span.Finish()
 
 	err = r.batchHandler.Handle(batchCtx, r, messages)
@@ -421,7 +421,7 @@ func (r *Receiver) Listen() error {
 		return azerr
 	}
 	if r.Cfg.BatchSize == 0 {
-		return r.receiveMessages()
+		return r.receiveMessages(ctx)
 	}
 	return r.receiveMessageBatches()
 }
