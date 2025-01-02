@@ -39,7 +39,7 @@ func (d Disposition) String() string {
 	return fmt.Sprintf("Unknown%d", d)
 }
 
-func (r *Receiver) Dispose(ctx context.Context, d Disposition, err error, msg *ReceivedMessage) {
+func (r *Receiver) dispose(ctx context.Context, d Disposition, err error, msg *ReceivedMessage) {
 	switch {
 	case d == DeadletterDisposition:
 		r.deadLetter(ctx, err, msg)

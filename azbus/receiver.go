@@ -154,20 +154,6 @@ func newReceiver(r *Receiver, log Logger, cfg ReceiverConfig, opts ...ReceiverOp
 	return r
 }
 
-// Note: these accessors are intended for batch receivers which take on much more of the responsibility of message lifecycle management.
-
-func (r *Receiver) GetAZClient() AZClient {
-	return r.azClient
-}
-
-func (r *Receiver) GetAZReceiver() *azservicebus.Receiver {
-	return r.receiver
-}
-
-func (r *Receiver) GetAZReceiverOptions() *azservicebus.ReceiverOptions {
-	return r.options
-}
-
 // String - returns string representation of receiver.
 func (r *Receiver) String() string {
 	// No log function calls in this method please.
@@ -191,7 +177,7 @@ func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration ti
 
 	r.log.Debugf("Processing message %d id %s", count, msg.MessageID)
 	disp, ctx, err := r.handleReceivedMessageWithTracingContext(ctx, msg, handler)
-	r.Dispose(ctx, disp, err, msg)
+	r.dispose(ctx, disp, err, msg)
 
 	duration := time.Since(now)
 
