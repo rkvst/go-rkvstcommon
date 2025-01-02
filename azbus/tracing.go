@@ -6,31 +6,6 @@ import (
 	opentracing "github.com/opentracing/opentracing-go"
 )
 
-func (r *Receiver) CreateBatchReceivedMessageTracingContext(ctx context.Context, spanProps map[string]string) (context.Context, opentracing.Span) {
-	// We don't have the tracing span info on the context yet, that is what this function will add
-	// we we log using the reciever logger
-	r.log.Debugf("ContextFromReceivedMessage(): %v", spanProps)
-
-	var opts = []opentracing.StartSpanOption{}
-	carrier := opentracing.TextMapCarrier{}
-	// This just gets all the message Application Properties into a string map. That map is then passed into the
-	// open tracing constructor which extracts any bits it is interested in to use to setup the spans etc.
-	// It will ignore anything it doesn't care about. So the filtering of the map is done for us and
-	// we don't need to pre-filter it.
-	for k, v := range spanProps {
-		carrier.Set(k, v)
-	}
-	spanCtx, err := opentracing.GlobalTracer().Extract(opentracing.TextMap, carrier)
-	if err != nil {
-		r.log.Infof("CreateBatchReceivedMessageTracingContext(): Unable to extract span context: %v", err)
-	} else {
-		opts = append(opts, opentracing.ChildOf(spanCtx))
-	}
-	span := opentracing.StartSpan("handle batch", opts...)
-	ctx = opentracing.ContextWithSpan(ctx, span)
-	return ctx, span
-}
-
 func (r *Receiver) CreateReceivedMessageTracingContext(ctx context.Context, message *ReceivedMessage, handler Handler) (context.Context, opentracing.Span) {
 	// We don't have the tracing span info on the context yet, that is what this function will add
 	// we we log using the reciever logger
