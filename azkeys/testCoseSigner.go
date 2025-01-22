@@ -15,15 +15,6 @@ import (
 	"github.com/veraison/go-cose"
 )
 
-// type TestCoseSignerFactory struct {
-// 	t          *testing.T
-// 	signingKey ecdsa.PrivateKey
-// }
-
-// func (f *TestCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Context) (IdentifiableCoseSigner, error) {
-// 	return NewTestCoseSigner(f.t, f.signingKey), nil
-// }
-
 // TestCoseSigner implements IdentifiableCoseSigner for use with the factory setup in logconfirmer.
 type TestCoseSigner struct {
 	innerSigner cose.Signer
