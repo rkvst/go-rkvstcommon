@@ -20,7 +20,7 @@ require (
 	github.com/gorilla/securecookie v1.1.2
 	github.com/gorilla/sessions v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	github.com/grpc-ecosystem/grpc-gateway/v2 v2.24.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.20.0
 	github.com/ldclabs/cose/go v0.0.0-20221214142927-d22c1cfc2154
 	github.com/lestrrat-go/jwx v1.2.29
 	github.com/nuts-foundation/go-did v0.6.4
@@ -34,8 +34,8 @@ require (
 	go.uber.org/automaxprocs v1.5.3
 	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.9.0
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20241209162323-e6fa225c2576
-	google.golang.org/grpc v1.69.0
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1
+	google.golang.org/grpc v1.69.0-dev
 )
 
 require (
@@ -99,7 +99,7 @@ require (
 	golang.org/x/net v0.30.0 // indirect
 	golang.org/x/sys v0.27.0 // indirect
 	golang.org/x/text v0.20.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20241216192217-9240e9c98484 // indirect
-	google.golang.org/protobuf v1.36.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240903143218-8af14fe29dc1 // indirect
+	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
