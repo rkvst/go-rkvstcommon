@@ -22,42 +22,9 @@ import (
 	"github.com/veraison/go-cose"
 )
 
-// IdentifiableCoseSigner represents a Cose1 signer that has additional methods to provide
-// sufficient information to verify the signed product (an identifier for the signing key and the
-// public key.)
-type IdentifiableCoseSigner interface {
-	cose.Signer
-	PublicKey() (*ecdsa.PublicKey, error)
-	KeyIdentifier() string
-	KeyLocation() string
-}
-
-// IdentifiableCoseSignerFactory is for creating IdentifiableCoseSigners. The reason for a factory
-// here is that we can always create a fresh instance, capturing the latest key information at that
-// point in time.
-type IdentifiableCoseSignerFactory interface {
-	NewIdentifiableCoseSigner(ctx context.Context) (IdentifiableCoseSigner, error)
-}
-
-// KeyVaultCoseSignerFactory creates instances of our Azure KeyVault implementation of
-// IdentifiableCoseSigner. The keyvault configuration is stored on the object and new instances
-// can be created without caller knowledge of it.
-type KeyVaultCoseSignerFactory struct {
-	keyVaultURL string
-	keyName     string
-}
-
-// NewKeyVaultCoseSignerFactory returns a new instance of the factory, storing the keyvault config
-func NewKeyVaultCoseSignerFactory(keyVaultURL string, keyName string) *KeyVaultCoseSignerFactory {
-	return &KeyVaultCoseSignerFactory{
-		keyVaultURL: keyVaultURL,
-		keyName:     keyName,
-	}
-}
-
-// NewIdentifiableCoseSigner creates a new keyvault configuration that signs with ES384
-// using the latest version of the named key
-func (f *KeyVaultCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Context) (IdentifiableCoseSigner, error) {
+// NewKeyVaultCoseSigner creates a new keyvault configuration that signs with ES384
+// using the latest version of the named key.
+func NewKeyVaultCoseSigner(ctx context.Context, keyName string, keyVaultURL string) (*KeyVaultCoseSigner, error) {
 	hasher := sha256.New()
 	hasher.Write([]byte("azure-keyvault"))
 	locationHash := hasher.Sum(nil)
@@ -68,10 +35,10 @@ func (f *KeyVaultCoseSignerFactory) NewIdentifiableCoseSigner(ctx context.Contex
 		// safe to stash it.  We must then not use this context for onward
 		// requests without adding a further timeout.
 		ctx:     context.WithoutCancel(ctx),
-		keyName: f.keyName,
+		keyName: keyName,
 		alg:     keyvault.ES384, // hardwired for the moment, add caller setting when needed
 		KeyVault: &KeyVault{
-			url: f.keyVaultURL,
+			url: keyVaultURL,
 		},
 		locationIdentifier: locationHashString,
 	}
