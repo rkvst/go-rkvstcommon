@@ -105,6 +105,8 @@ func base64BEtoBigInt(in string) (*big.Int, error) {
 }
 
 // PublicKey returns the public key for this instance of CoseSignerKeyVault
+//
+// NOTE: Only valid for ECDSA
 func (kv *KeyVaultCoseSigner) PublicKey() (*ecdsa.PublicKey, error) {
 	if kv.key.Key.X == nil || kv.key.Key.Y == nil {
 		return nil, fmt.Errorf("public key is nil")
@@ -120,12 +122,23 @@ func (kv *KeyVaultCoseSigner) PublicKey() (*ecdsa.PublicKey, error) {
 		return nil, fmt.Errorf("unable to convert Y %s: %w", *kv.key.Key.Y, err)
 	}
 
+	var curve elliptic.Curve
+
+	switch kv.key.Key.Crv {
+	case keyvault.P256:
+		curve = elliptic.P256()
+	case keyvault.P384:
+		curve = elliptic.P384()
+	case keyvault.P521:
+		curve = elliptic.P521()
+	default:
+		return nil, fmt.Errorf("failed to find ecdsa curve for public key")
+	}
+
 	return &ecdsa.PublicKey{
-		Curve: &elliptic.CurveParams{
-			Name: "P-384",
-		},
-		X: X,
-		Y: Y,
+		Curve: curve,
+		X:     X,
+		Y:     Y,
 	}, nil
 }
 
