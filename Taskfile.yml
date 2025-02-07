@@ -53,6 +53,12 @@ tasks:
     cmds:
       - go build -v ./...
 
+  build:generate:
+    desc: dummy rune
+    cmds:
+      - |
+        echo "Nothing to do"
+
   format:
     desc: format the code
     cmds:

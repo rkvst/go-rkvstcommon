@@ -14,8 +14,6 @@ import (
 	otnethttp "github.com/opentracing-contrib/go-stdlib/nethttp"
 	opentracing "github.com/opentracing/opentracing-go"
 
-	"github.com/datatrails/go-datatrails-common/environment"
-
 	zipkinot "github.com/openzipkin-contrib/zipkin-go-opentracing"
 	zipkin "github.com/openzipkin/zipkin-go"
 	zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
@@ -120,11 +118,11 @@ func trimPodName(p string) string {
 }
 
 func NewTracer(log Logger, portName string) io.Closer {
-	instanceName, _, _ := strings.Cut(environment.GetOrFatal("POD_NAME"), " ")
-	nameSpace := environment.GetOrFatal("POD_NAMESPACE")
-	containerName := environment.GetOrFatal("CONTAINER_NAME")
+	instanceName, _, _ := strings.Cut(getOrFatal("POD_NAME"), " ")
+	nameSpace := getOrFatal("POD_NAMESPACE")
+	containerName := getOrFatal("CONTAINER_NAME")
 	podName := strings.Join([]string{trimPodName(instanceName), nameSpace, containerName}, ".")
-	listenStr := fmt.Sprintf("localhost:%s", environment.GetOrFatal(portName))
+	listenStr := fmt.Sprintf("localhost:%s", getOrFatal(portName))
 	return NewFromEnv(log, strings.TrimSpace(podName), listenStr, "ZIPKIN_ENDPOINT", "DISABLE_ZIPKIN")
 }
 
@@ -135,7 +133,7 @@ func NewTracer(log Logger, portName string) io.Closer {
 func NewFromEnv(log Logger, service string, host string, endpointVar, disableVar string) io.Closer {
 	ze, ok := os.LookupEnv(endpointVar)
 	if !ok {
-		if disabled := environment.GetTruthyOrFatal(disableVar); !disabled {
+		if disabled := getTruthyOrFatal(disableVar); !disabled {
 			log.Panicf(
 				"'%s' has not been provided and is not disabled by '%s'",
 				endpointVar, disableVar)
@@ -145,7 +143,7 @@ func NewFromEnv(log Logger, service string, host string, endpointVar, disableVar
 	}
 	// zipkin conf is available, disable it if disableVar is truthy
 
-	if disabled := environment.GetTruthyOrFatal(disableVar); disabled {
+	if disabled := getTruthyOrFatal(disableVar); disabled {
 		log.Infof("'%s' set, zipkin disabled", disableVar)
 		return nil
 	}
