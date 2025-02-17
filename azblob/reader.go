@@ -60,6 +60,7 @@ func NewReaderNoAuth(url string, opts ...ReaderOption) (Reader, error) {
 		credential:    nil,
 		rootURL:       url,
 	}
+
 	azp.serviceClient, err = azStorageBlob.NewServiceClientWithNoCredential(
 		url,
 		nil,

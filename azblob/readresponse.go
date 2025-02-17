@@ -9,8 +9,9 @@ import (
 
 	azStorageBlob "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/datatrails/go-datatrails-common/logger"
-	"github.com/datatrails/go-datatrails-common/scannedstatus"
 )
+
+type ReadResponseScannedStatus func(resp *ReaderResponse, metaData map[string]string)
 
 type ReaderResponse struct {
 	Reader            io.ReadCloser
@@ -34,6 +35,8 @@ type ReaderResponse struct {
 	StatusCode   int               // For If- header fails, err can be nil and code can be 304
 	Status       string
 	XMsErrorCode string // will be "ConditioNotMet" for If- header predicate fails, even when err is nil
+
+	setReadResponseScannedStatus ReadResponseScannedStatus
 }
 
 func (r *ReaderResponse) ConditionNotMet() bool {
@@ -117,9 +120,9 @@ func readerResponseMetadata(resp *ReaderResponse, metaData map[string]string) er
 	resp.HashValue = metaData[textproto.CanonicalMIMEHeaderKey(HashKey)]
 	resp.MimeType = metaData[textproto.CanonicalMIMEHeaderKey(MimeKey)]
 	resp.TimestampAccepted = metaData[textproto.CanonicalMIMEHeaderKey(TimeKey)]
-	resp.ScannedStatus = scannedstatus.FromString(metaData[textproto.CanonicalMIMEHeaderKey(scannedstatus.Key)]).String()
-	resp.ScannedBadReason = metaData[textproto.CanonicalMIMEHeaderKey(scannedstatus.BadReason)]
-	resp.ScannedTimestamp = metaData[textproto.CanonicalMIMEHeaderKey(scannedstatus.Timestamp)]
+	if resp.setReadResponseScannedStatus != nil {
+		resp.setReadResponseScannedStatus(resp, metaData)
+	}
 	// Note: it is fine if these are the same instances
 	resp.Metadata = metaData
 	return nil

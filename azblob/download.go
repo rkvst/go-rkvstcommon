@@ -78,7 +78,7 @@ func (azp *Storer) Reader(
 		opt(options)
 	}
 
-	resp := &ReaderResponse{}
+	resp := &ReaderResponse{setReadResponseScannedStatus: azp.setReadResponseScannedStatus}
 	blobAccessConditions, err := storerOptionConditions(options)
 	if err != nil {
 		return nil, err

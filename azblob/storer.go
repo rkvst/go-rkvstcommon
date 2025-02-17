@@ -32,7 +32,16 @@ type Storer struct {
 	containerClient *ContainerClient
 	serviceClient   *ServiceClient
 
-	log Logger
+	log                          Logger
+	setReadResponseScannedStatus ReadResponseScannedStatus
+}
+
+type StorerOption func(*Storer)
+
+func WithSetScannedStatus(s ReadResponseScannedStatus) StorerOption {
+	return func(a *Storer) {
+		a.setReadResponseScannedStatus = s
+	}
 }
 
 // New returns new az blob read/write object
@@ -41,6 +50,7 @@ func New(
 	resourceGroup string,
 	subscription string,
 	container string,
+	options ...StorerOption,
 ) (*Storer, error) {
 
 	var err error
@@ -65,13 +75,16 @@ func New(
 		logger.Sugar.Infof("Storer: %v", ErrUnspecifiedContainer)
 		return nil, ErrUnspecifiedContainer
 	}
-	azp := &Storer{
+	azp := Storer{
 		AccountName:   accountName,
 		ResourceGroup: resourceGroup,
 		Subscription:  subscription,
 		Container:     container,
 		credential:    credential,
 		rootURL:       rootURL,
+	}
+	for _, option := range options {
+		option(&azp)
 	}
 
 	azp.containerURL = fmt.Sprintf(
@@ -94,5 +107,5 @@ func New(
 		return nil, err
 	}
 
-	return azp, nil
+	return &azp, nil
 }
