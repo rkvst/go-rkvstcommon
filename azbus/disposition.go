@@ -3,6 +3,7 @@ package azbus
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
@@ -94,7 +95,7 @@ func deadLetter(ctx context.Context, log logger.Logger, r *azservicebus.Receiver
 	defer span.Finish()
 	log.Infof("DeadLetter Message: %v", err)
 	options := azservicebus.DeadLetterOptions{
-		Reason: to.Ptr(err.Error()),
+		Reason: to.Ptr(strings.ToValidUTF8(err.Error(), "!!!")),
 	}
 	err1 := r.DeadLetterMessage(ctx, msg, &options)
 	if err1 != nil {
