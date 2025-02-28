@@ -32,13 +32,13 @@ func NewAzbusError(err error) error {
 	if errors.As(err, &servicebusError) {
 		switch servicebusError.Code {
 		case azservicebus.CodeUnauthorizedAccess:
-			return ErrUnauthorizedAccess
+			return errors.Join(err, ErrUnauthorizedAccess)
 		case azservicebus.CodeConnectionLost:
-			return ErrConnectionLost
+			return errors.Join(err, ErrConnectionLost)
 		case azservicebus.CodeLockLost:
-			return ErrLockLost
+			return errors.Join(err, ErrLockLost)
 		case azservicebus.CodeTimeout:
-			return ErrTimeout
+			return errors.Join(err, ErrTimeout)
 		}
 	}
 	return err
