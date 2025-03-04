@@ -170,20 +170,16 @@ func (r *Receiver) String() string {
 }
 
 // processMessage disposes of messages and emits 2 log messages detailing how long processing took.
-func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration time.Duration, msg *ReceivedMessage, handler Handler) {
+func (r *Receiver) processMessage(ctx context.Context, log Logger, count int, maxDuration time.Duration, msg *ReceivedMessage, handler Handler) {
 	now := time.Now()
 
 	// the context wont have a trace span on it yet, so stick with the receiver logger instance
 
-	r.log.Debugf("Processing message %d id %s", count, msg.MessageID)
-	disp, ctx, err := r.handleReceivedMessageWithTracingContext(ctx, msg, handler)
+	log.Debugf("Processing message %d id %s", count, msg.MessageID)
+	disp, ctx, err := handleReceivedMessageWithTracingContext(ctx, r.log, msg, handler)
 	r.dispose(ctx, disp, err, msg)
 
 	duration := time.Since(now)
-
-	// Now we do have a tracing context we can use it for logging
-	log := r.log.FromContext(ctx)
-	defer log.Close()
 
 	log.Debugf("Processing message %d id %s took %s", count, msg.MessageID, duration)
 
@@ -202,22 +198,22 @@ func (r *Receiver) processMessage(ctx context.Context, count int, maxDuration ti
 // renewMessageLock renews the given messages peek lock, so it doesn't lose the lock and get re-added to the message queue.
 //
 // Stop the message lock renewal by cancelling the passed in context
-func (r *Receiver) renewMessageLock(ctx context.Context, count int, msg *ReceivedMessage) {
+func (r *Receiver) renewMessageLock(ctx context.Context, log Logger, count int, msg *ReceivedMessage) {
 	var err error
 
 	ticker := time.NewTicker(r.Cfg.RenewMessageTime)
 
 	var counter int
-	r.log.Debugf("RenewMessageLock %d started", count)
+	log.Debugf("RenewMessageLock %d started", count)
 	for {
 		select {
 		case <-ctx.Done():
-			r.log.Debugf("RenewMessageLock %d stopped after %d executions", count, counter)
+			log.Debugf("RenewMessageLock %d stopped after %d executions", count, counter)
 			ticker.Stop()
 			return
 		case t := <-ticker.C:
 			counter++
-			r.log.Debugf("RenewMessageLock %d (%d)", count, counter)
+			log.Debugf("RenewMessageLock %d (%d)", count, counter)
 			err = r.receiver.RenewMessageLock(ctx, msg, nil)
 			// if we cannot renew the message, we can't do much but log it
 			//
@@ -225,7 +221,7 @@ func (r *Receiver) renewMessageLock(ctx context.Context, count int, msg *Receive
 			// received again.
 			if err != nil {
 				azerr := fmt.Errorf("RenewMessageLock %d: failed to renew message lock at %v: %w", count, t, NewAzbusError(err))
-				r.log.Infof("%s", azerr)
+				log.Infof("%s", azerr)
 			}
 		}
 	}
@@ -233,8 +229,11 @@ func (r *Receiver) renewMessageLock(ctx context.Context, count int, msg *Receive
 
 func (r *Receiver) receiveMessages(ctx context.Context) error {
 
+	log := r.log.FromContext(ctx)
+	defer log.Close()
+
 	numberOfReceivedMessages := len(r.handlers)
-	r.log.Debugf(
+	log.Debugf(
 		"NumberOfReceivedMessages %d, RenewMessageLock: %v",
 		numberOfReceivedMessages,
 		r.Cfg.RenewMessageLock,
@@ -248,33 +247,33 @@ func (r *Receiver) receiveMessages(ctx context.Context) error {
 	msgs := make(chan *ReceivedMessage, numberOfReceivedMessages)
 	var wg sync.WaitGroup
 	for i := range numberOfReceivedMessages {
-		go func(rctx context.Context, ii int, rr *Receiver) {
-			rr.log.Debugf("Start worker %d", ii)
+		go func(rctx context.Context, log Logger, ii int, rr *Receiver) {
+			log.Debugf("Start worker %d", ii)
 			for {
 				select {
 				case <-rctx.Done():
-					rr.log.Debugf("Stop worker %d", ii)
+					log.Debugf("Stop worker %d", ii)
 					return
 				case msg := <-msgs:
-					func(rrctx context.Context) {
+					func(rrctx context.Context, log Logger) {
 						var renewCtx context.Context
 						var renewCancel context.CancelFunc
 						var maxDuration time.Duration
 						if rr.Cfg.RenewMessageLock {
 							renewCtx, renewCancel = context.WithCancel(rrctx)
-							go rr.renewMessageLock(renewCtx, ii+1, msg)
+							go rr.renewMessageLock(renewCtx, log, ii+1, msg)
 							defer renewCancel()
 						} else {
 							// we need a timeout if RenewMessageLock is disabled
-							renewCtx, renewCancel, maxDuration = rr.setTimeout(rrctx, rr.log, msg)
+							renewCtx, renewCancel, maxDuration = rr.setTimeout(rrctx, log, msg)
 							defer renewCancel()
 						}
-						rr.processMessage(renewCtx, ii+1, maxDuration, msg, rr.handlers[ii])
-					}(rctx)
+						rr.processMessage(renewCtx, log, ii+1, maxDuration, msg, rr.handlers[ii])
+					}(rctx, log)
 					wg.Done()
 				}
 			}
-		}(ctx, i, r)
+		}(ctx, log, i, r)
 	}
 
 	// Extensively tested by loading messages and checking that the waitGroup logic always reset to zero so messages
@@ -289,11 +288,11 @@ func (r *Receiver) receiveMessages(ctx context.Context) error {
 		messages, err = r.receiver.ReceiveMessages(ctx, numberOfReceivedMessages, nil)
 		if err != nil {
 			azerr := fmt.Errorf("%s: ReceiveMessage failure: %w", r, NewAzbusError(err))
-			r.log.Infof("%s", azerr)
+			log.Infof("%s", azerr)
 			return azerr
 		}
 		total := len(messages)
-		r.log.Debugf("total messages %d", total)
+		log.Debugf("total messages %d", total)
 
 		// Use the waitgroup to indicate when all messages have been processed.
 		for i := range total {
@@ -301,7 +300,7 @@ func (r *Receiver) receiveMessages(ctx context.Context) error {
 			msgs <- messages[i]
 		}
 		wg.Wait()
-		r.log.Debugf("Processed %d messages", total)
+		log.Debugf("Processed %d messages", total)
 	}
 }
 

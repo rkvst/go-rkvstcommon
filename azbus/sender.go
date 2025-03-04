@@ -8,9 +8,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azservicebus"
 	"github.com/google/uuid"
-	otlog "github.com/opentracing/opentracing-go/log"
-
-	"github.com/datatrails/go-datatrails-common/tracing"
 )
 
 // SenderConfig configuration for an azure servicebus namespace and queue
@@ -31,6 +28,7 @@ type Sender struct {
 	mtx                   sync.Mutex
 	sender                *azservicebus.Sender
 	maxMessageSizeInBytes int64
+	spanner               Spanner
 }
 
 // NewSender creates a new client
@@ -41,6 +39,7 @@ func NewSender(log Logger, cfg SenderConfig) *Sender {
 		azClient: NewAZClient(cfg.ConnectionString),
 	}
 	s.log = log.WithIndex("sender", s.String())
+	s.spanner = NewSpanning(s.log)
 	return s
 }
 
@@ -61,6 +60,10 @@ func (s *Sender) Close(ctx context.Context) {
 			s.log.Infof("%s", azerr)
 		}
 		s.sender = nil // not going to attempt to close again on error
+	}
+	if s != nil && s.spanner != nil {
+		s.spanner.Close()
+		s.spanner = nil
 	}
 }
 
@@ -97,23 +100,51 @@ func (s *Sender) Open() error {
 	return nil
 }
 
+func (s *Sender) updateSendingMesssage(ctx context.Context, log Logger, message *OutMessage) {
+
+	var err error
+	var attrs map[string]string
+	log.Debugf("updateSendingMesssage(): context %#v", ctx)
+	if s.spanner != nil {
+		attrs, err = s.spanner.InjectContext(ctx)
+		if err != nil {
+			log.Infof("updateSendingMesssage(): failed to inject: %v", err)
+		}
+	}
+	//if attrs == nil {
+	//}
+	for k, v := range attrs {
+		log.Debugf("updateSendingMesssage(): %s, %v", k, v)
+		OutMessageSetProperty(message, k, v)
+	}
+	log.Debugf("updateSendingMesssageForSpan(): ApplicationProperties %v", OutMessageProperties(message))
+}
+
 // Send submits a message to the queue. Ignores cancellation.
 func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 
 	// Without this fix eventsourcepoller and similar services repeatedly context cancel and repeatedly
 	// restart.
 	ctx = context.WithoutCancel(ctx)
-
+	var log Logger
 	var err error
 
-	span, ctx := tracing.StartSpanFromContext(ctx, "Sender.Send")
-	defer span.Finish()
+	id := uuid.New().String()
+	message.MessageID = &id
 
-	// Get the logging context after we create the span as that may have created a new
-	// trace and stashed the traceid in the metadata.
-	log := s.log.FromContext(ctx)
-	defer log.Close()
-
+	if s.spanner != nil {
+		ctx = s.spanner.Open(
+			ctx,
+			"Sender.Send",
+			[2]string{"sender", s.Cfg.TopicOrQueueName},
+			[2]string{"message.id", id},
+		)
+		defer s.spanner.Close()
+		log = s.spanner.Log()
+	} else {
+		log = s.log.FromContext(ctx)
+		defer log.Close()
+	}
 	// boots & braces
 	if s.sender == nil {
 		err = s.Open()
@@ -121,15 +152,6 @@ func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 			return err
 		}
 	}
-
-	// We set and log a message ID so we can trace the message through the bus
-	id := uuid.New().String()
-	message.MessageID = &id
-
-	span.LogFields(
-		otlog.String("sender", s.Cfg.TopicOrQueueName),
-		otlog.String("message id", id),
-	)
 
 	size := int64(len(message.Body))
 	log.Debugf("%s: Msg id %s Sized %d limit %d", s, id, size, s.maxMessageSizeInBytes)
@@ -139,7 +161,7 @@ func (s *Sender) Send(ctx context.Context, message *OutMessage) error {
 	}
 	now := time.Now()
 
-	s.updateSendingMesssageForSpan(ctx, message, span)
+	s.updateSendingMesssage(ctx, log, message)
 
 	err = s.sender.SendMessage(ctx, message, nil)
 	if err != nil {
@@ -169,21 +191,23 @@ func (s *Sender) SendBatch(ctx context.Context, batch *OutMessageBatch) error {
 	// restart.
 	ctx = context.WithoutCancel(ctx)
 
+	var log Logger
 	var err error
 
 	now := time.Now()
 
-	span, ctx := tracing.StartSpanFromContext(ctx, "Sender.SendBatch")
-	defer span.Finish()
-	span.LogFields(
-		otlog.String("sender", s.Cfg.TopicOrQueueName),
-	)
-
-	// Get the logging context after we create the span as that may have created a new
-	// trace and stashed the traceid in the metadata.
-	log := s.log.FromContext(ctx)
-	defer log.Close()
-
+	if s.spanner != nil {
+		ctx = s.spanner.Open(
+			ctx,
+			"Sender.SendBatch",
+			[2]string{"sender", s.Cfg.TopicOrQueueName},
+		)
+		defer s.spanner.Close()
+		log = s.spanner.Log()
+	} else {
+		log = s.log.FromContext(ctx)
+		defer log.Close()
+	}
 	// boots & braces
 	if s.sender == nil {
 		err = s.Open()
