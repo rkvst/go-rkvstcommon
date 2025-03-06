@@ -19,6 +19,9 @@ import (
 	zipkinhttp "github.com/openzipkin/zipkin-go/reporter/http"
 )
 
+type StartSpanOption = opentracing.StartSpanOption
+type Span = opentracing.Span
+
 const (
 	requestID         = "x-request-id"
 	otSpanContext     = "x-ot-span-context"
@@ -73,7 +76,7 @@ func NewSpanContext(ctx context.Context, operationName string) (opentracing.Span
 }
 
 // StartSpanFromContext is a simple wrapper that removes the requirement to import "github.com/opentracing/opentracing-go" in business code.
-func StartSpanFromContext(ctx context.Context, name string, options ...opentracing.StartSpanOption) (opentracing.Span, context.Context) {
+func StartSpanFromContext(ctx context.Context, name string, options ...StartSpanOption) (Span, context.Context) {
 	return opentracing.StartSpanFromContext(ctx, name, options...)
 }
 
@@ -107,7 +110,7 @@ func trimPodName(p string) string {
 	// just one (length 5)
 
 	if len(a[(i-1)]) == 5 && (len(a[(i-2)]) == 10 || len(a[(i-2)]) == 11) {
-		// this has two instnace ID components so strip them
+		// this has two instance ID components so strip them
 		return strings.Join(a[:i-2], "-")
 	}
 	if i > 1 {
@@ -168,7 +171,7 @@ func New(log Logger, service string, host string, zipkinEndpoint string) io.Clos
 	rate := 0.2
 
 	// This sampler is only used when a service creates new traces (which is rare, only if
-	// not recieving messages or presenting callable endpoints, e.g. a cron like service)
+	// not receiving messages or presenting callable endpoints, e.g. a cron like service)
 	sampler, err := zipkin.NewBoundarySampler(rate, time.Now().UnixNano())
 	if err != nil {
 		log.Panicf("unable to create zipkin sampler: rate %f: %v", rate, err)
