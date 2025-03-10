@@ -36,8 +36,10 @@ tasks:
   environment:
     desc: Show environment and location of tools executables.
     cmds:
-      - env | sort
-      - which go
+      - |
+        which go
+        go version
+        env | sort
 
   precommit:
     desc: |

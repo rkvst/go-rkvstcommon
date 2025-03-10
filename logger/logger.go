@@ -234,21 +234,12 @@ func (wl *WrappedLogger) FromContext(ctx context.Context) *WrappedLogger {
 		return wl
 	}
 
-	fields := []any{}
 	traceID := valueFromCarrier(carrier, TraceIDKey)
 	if traceID != "" {
-		fields = append(fields, zap.String(TraceIDKey, traceID))
+		return wl.WithIndex(TraceIDKey, traceID)
 	}
 
-	if len(fields) == 0 {
-		return wl
-	}
-	// add the fields to the logger
-	sugaredLogger := wl.With(fields...)
-
-	return &WrappedLogger{
-		SugaredLogger: sugaredLogger,
-	}
+	return wl.WithIndex(TraceIDKey, traceID)
 }
 
 func (wl *WrappedLogger) WithServiceName(servicename string) *WrappedLogger {
